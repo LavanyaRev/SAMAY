@@ -6,10 +6,10 @@
 
 ## Monorepo Architecture
 
-- [`apps/api`](file:///c:/Users/lavan/Downloads/NidhiSetu/apps/api): NestJS modular monolith API with code-first OpenAPI/Swagger documentation, PostgreSQL Row-Level Security (RLS), SHA-256 hash-chained append-only audit ledger, injectable `SystemClockService`, transactional outbox notifications, EVC conflict-of-interest engine, and analytics views.
-- [`apps/web`](file:///c:/Users/lavan/Downloads/NidhiSetu/apps/web): Next.js 15 statutory portal with WCAG 2.1 AA contrast-verified design tokens, bilingual English & Hindi (`हिन्दी`) translations, ECharts drill-down dashboards, Time-Travel Console, Audit Tamper Demo, Compliance Health Score (`ADVISORY`), and Rule-Change Impact Simulator.
-- [`packages/shared`](file:///c:/Users/lavan/Downloads/NidhiSetu/packages/shared): `@samay/shared` Zod boundary schemas, workflow pipeline DSL (`ONLY_SCRUTINY`, `SCRUTINY_EVC`), and statutory role definitions.
-- [`packages/database`](file:///c:/Users/lavan/Downloads/NidhiSetu/packages/database): `@samay/database` Prisma schema, PostgreSQL RLS policies (`samay_app`), analytics SQL views/materialized views, and deterministic seeder.
+- [`apps/api`](./apps/api): NestJS modular monolith API with code-first OpenAPI/Swagger documentation, PostgreSQL Row-Level Security (RLS), SHA-256 hash-chained append-only audit ledger, injectable `SystemClockService`, transactional outbox notifications, EVC conflict-of-interest engine, and analytics views.
+- [`apps/web`](./apps/web): Next.js 15 statutory portal with WCAG 2.1 AA contrast-verified design tokens, bilingual English & Hindi (`हिन्दी`) translations, ECharts drill-down dashboards, Time-Travel Console, Audit Tamper Demo, Compliance Health Score (`ADVISORY`), and Rule-Change Impact Simulator.
+- [`packages/shared`](./packages/shared): `@samay/shared` Zod boundary schemas, workflow pipeline DSL (`ONLY_SCRUTINY`, `SCRUTINY_EVC`), and statutory role definitions.
+- [`packages/database`](./packages/database): `@samay/database` Prisma schema, PostgreSQL RLS policies (`samay_app`), analytics SQL views/materialized views, and deterministic seeder.
 
 ---
 
