@@ -1,0 +1,518 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+enum ConditionStatus {
+  PENDING
+  SUBMITTED
+  UNDER_VERIFICATION
+  VERIFIED
+  REJECTED
+  OVERDUE
+  WAIVED_BY_AUTHORITY
+}
+
+// 1. Regions
+model Region {
+  id        String   @id @default(uuid()) @db.Uuid
+  code      String   @unique @db.VarChar(50)
+  name      String   @db.VarChar(150)
+  states    String[]
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  users            User[]
+  institutions     Institution[]
+  applications     Application[]
+  holidayCalendars HolidayCalendar[]
+
+  @@map("regions")
+}
+
+// 2. Users
+model User {
+  id            String    @id @default(uuid()) @db.Uuid
+  keycloakId    String    @unique @map("keycloak_id") @db.VarChar(255)
+  email         String    @unique @db.VarChar(255)
+  fullName      String    @map("full_name") @db.VarChar(255)
+  role          String    @db.VarChar(50) // INSTITUTION, REGIONAL_OFFICER, BUREAU_OFFICER, COMMITTEE_MEMBER, ADMIN
+  passwordHash  String?   @map("password_hash") @db.VarChar(255) // bcrypt hash of password
+  regionId      String?   @map("region_id") @db.Uuid
+  institutionId String?   @map("institution_id") @db.Uuid
+  isActive      Boolean   @default(true) @map("is_active")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  deletedAt     DateTime? @map("deleted_at")
+
+  region      Region?      @relation(fields: [regionId], references: [id])
+  institution Institution? @relation(fields: [institutionId], references: [id])
+
+  reviewedApplications   Application[]           @relation("ReviewerApplications")
+  evcPanels              EvcPanel[]
+  undertakingSubmissions UndertakingSubmission[] @relation("SubmittedBy")
+  verifiedSubmissions    UndertakingSubmission[] @relation("VerifiedBy")
+  verifiedDocuments      TrackedDocument[]       @relation("VerifiedByUser")
+  fileObjects            FileObject[]
+  notifications          Notification[]
+
+  @@index([regionId])
+  @@index([institutionId])
+  @@index([role])
+  @@map("users")
+}
+
+// 3. Institutions
+model Institution {
+  id               String    @id @default(uuid()) @db.Uuid
+  aictePermanentId String    @unique @map("aicte_permanent_id") @db.VarChar(100)
+  name             String    @db.VarChar(255)
+  type             String    @db.VarChar(100) // ENGINEERING_TECHNOLOGY, MANAGEMENT, PHARMACY, POLYTECHNIC, etc.
+  regionId         String    @map("region_id") @db.Uuid
+  state            String    @db.VarChar(100)
+  district         String    @db.VarChar(100)
+  address          String    @db.Text
+  pincode          String    @db.VarChar(10)
+  principalName    String    @map("principal_name") @db.VarChar(255)
+  principalEmail   String    @map("principal_email") @db.VarChar(255)
+  principalPhone   String    @map("principal_phone") @db.VarChar(20)
+  establishedYear  Int       @map("established_year")
+  isMinority       Boolean   @default(false) @map("is_minority")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+  deletedAt        DateTime? @map("deleted_at")
+
+  region           Region            @relation(fields: [regionId], references: [id])
+  users            User[]
+  applications     Application[]
+  trackedDocuments TrackedDocument[]
+
+  @@index([regionId])
+  @@index([aictePermanentId])
+  @@map("institutions")
+}
+
+// 4. Application Types
+model ApplicationType {
+  id          String   @id @default(uuid()) @db.Uuid
+  code        String   @unique @db.VarChar(100) // NEW_INSTITUTION, EXTENSION_OF_APPROVAL, etc.
+  name        String   @db.VarChar(255)
+  description String?  @db.Text
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  applications Application[]
+
+  @@map("application_types")
+}
+
+// 5. Pipeline Definitions (Versioned as DATA, with aph_edition label and active flag)
+model PipelineDefinition {
+  id         String   @id @default(uuid()) @db.Uuid
+  code       String   @db.VarChar(100)
+  version    String   @db.VarChar(50)
+  aphEdition String   @map("aph_edition") @db.VarChar(100) // APH-2024-2027
+  isActive   Boolean  @default(true) @map("is_active")
+  definition Json     @db.JsonB // Validated JSON workflow definition with stages, transitions, conditions
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  applications Application[]
+
+  @@unique([code, version])
+  @@index([isActive])
+  @@map("pipeline_definitions")
+}
+
+// 6. Applications (With RLS isolation on region_id)
+model Application {
+  id                      String    @id @default(uuid()) @db.Uuid
+  institutionId           String    @map("institution_id") @db.Uuid
+  regionId                String    @map("region_id") @db.Uuid // Denormalized for RLS & direct region queries
+  applicationTypeId       String    @map("application_type_id") @db.Uuid
+  academicYear            String    @map("academic_year") @db.VarChar(20) // e.g. 2026-27
+  stage                   String    @db.VarChar(50) // SUBMISSION, SCRUTINY, EVC, SAC_SHC, FINAL_DECISION
+  status                  String    @db.VarChar(50) // DRAFT, SUBMITTED, UNDER_SCRUTINY, SCRUTINY_DEFICIENT, etc.
+  pipelineDefinitionId    String    @map("pipeline_definition_id") @db.Uuid
+  version                 Int       @default(1)
+  submittedAt             DateTime? @map("submitted_at")
+  currentReviewerId       String?   @map("current_reviewer_id") @db.Uuid
+  advisoryRecommendations Json      @default("[]") @map("advisory_recommendations") @db.JsonB
+  createdAt               DateTime  @default(now()) @map("created_at")
+  updatedAt               DateTime  @updatedAt @map("updated_at")
+  deletedAt               DateTime? @map("deleted_at")
+
+  institution        Institution        @relation(fields: [institutionId], references: [id])
+  region             Region             @relation(fields: [regionId], references: [id])
+  applicationType    ApplicationType    @relation(fields: [applicationTypeId], references: [id])
+  pipelineDefinition PipelineDefinition @relation(fields: [pipelineDefinitionId], references: [id])
+  currentReviewer    User?              @relation("ReviewerApplications", fields: [currentReviewerId], references: [id])
+
+  stageInstances StageInstance[]
+  evcCases       EvcCase[]
+  undertakings   Undertaking[]
+
+  @@index([regionId])
+  @@index([status])
+  @@index([institutionId])
+  @@index([stage, status])
+  @@map("applications")
+}
+
+// 7. Stage Instances
+model StageInstance {
+  id            String    @id @default(uuid()) @db.Uuid
+  applicationId String    @map("application_id") @db.Uuid
+  stage         String    @db.VarChar(50)
+  status        String    @db.VarChar(50)
+  startedAt     DateTime  @default(now()) @map("started_at")
+  completedAt   DateTime? @map("completed_at")
+  outcome       String?   @db.VarChar(100)
+  notes         String?   @db.Text
+  data          Json      @default("{}") @db.JsonB
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId])
+  @@index([stage, status])
+  @@map("stage_instances")
+}
+
+// 8. EVC Cases
+model EvcCase {
+  id             String    @id @default(uuid()) @db.Uuid
+  applicationId  String    @map("application_id") @db.Uuid
+  status         String    @db.VarChar(50) // PENDING, SCHEDULED, IN_PROGRESS, COMPLETED, CANCELLED
+  scheduledDate  DateTime? @map("scheduled_date")
+  inspectionMode String    @default("PHYSICAL") @map("inspection_mode") @db.VarChar(50)
+  reportStatus   String    @default("PENDING") @map("report_status") @db.VarChar(50)
+  advisoryScore  Float?    @map("advisory_score")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  panels      EvcPanel[]
+
+  @@index([applicationId])
+  @@index([status])
+  @@map("evc_cases")
+}
+
+// 9. EVC Panels
+model EvcPanel {
+  id           String   @id @default(uuid()) @db.Uuid
+  evcCaseId    String   @map("evc_case_id") @db.Uuid
+  expertUserId String   @map("expert_user_id") @db.Uuid
+  role         String   @default("MEMBER") @db.VarChar(50) // CHAIRMAN, MEMBER, CONVENER
+  status       String   @default("ASSIGNED") @db.VarChar(50) // ASSIGNED, ACCEPTED, DECLINED
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  evcCase    EvcCase @relation(fields: [evcCaseId], references: [id], onDelete: Cascade)
+  expertUser User    @relation(fields: [expertUserId], references: [id])
+
+  @@index([evcCaseId])
+  @@index([expertUserId])
+  @@map("evc_panels")
+}
+
+// 10. Undertakings
+model Undertaking {
+  id                     String   @id @default(uuid()) @db.Uuid
+  applicationId          String   @map("application_id") @db.Uuid
+  category               String   @db.VarChar(100) // FACULTY_DEFICIENCY, LAB_INFRASTRUCTURE, etc.
+  description            String   @db.Text
+  complianceDeadlineDays Int      @default(90) @map("compliance_deadline_days")
+  deadlineDate           DateTime @map("deadline_date")
+  status                 String   @default("PENDING") @db.VarChar(50) // PENDING, COMPLIED, DEFAULTED, ESCALATED
+  affidavitFileId        String?  @map("affidavit_file_id") @db.Uuid
+  createdAt              DateTime @default(now()) @map("created_at")
+  updatedAt              DateTime @updatedAt @map("updated_at")
+
+  application   Application             @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  affidavitFile FileObject?             @relation("AffidavitFile", fields: [affidavitFileId], references: [id])
+  submissions   UndertakingSubmission[]
+  conditions    Condition[]
+
+  @@index([applicationId])
+  @@index([status])
+  @@index([deadlineDate])
+  @@map("undertakings")
+}
+
+// 10b. Conditions
+// TODO(APH-VERIFY): Verify exact clause reference, timeline, and fee schedule against AICTE Approval Process Handbook (APH 2024-27).
+model Condition {
+  id                    String          @id @default(uuid()) @db.Uuid
+  undertakingId         String          @map("undertaking_id") @db.Uuid
+  conditionType         String          @map("condition_type") @db.VarChar(100)
+  requiredEvidenceTypes Json            @default("[]") @map("required_evidence_types") @db.JsonB
+  dueDate               DateTime        @map("due_date")
+  status                ConditionStatus @default(PENDING)
+  waivedBy              String?         @map("waived_by") @db.Uuid
+  waivedAt              DateTime?       @map("waived_at")
+  waiverReason          String?         @map("waiver_reason") @db.Text
+  createdAt             DateTime        @default(now()) @map("created_at")
+  updatedAt             DateTime        @updatedAt @map("updated_at")
+  deletedAt             DateTime?       @map("deleted_at")
+
+  undertaking Undertaking             @relation(fields: [undertakingId], references: [id], onDelete: Cascade)
+  submissions UndertakingSubmission[]
+
+  @@index([undertakingId])
+  @@index([status])
+  @@index([dueDate])
+  @@map("conditions")
+}
+
+// 11. Undertaking Submissions
+model UndertakingSubmission {
+  id              String    @id @default(uuid()) @db.Uuid
+  undertakingId   String    @map("undertaking_id") @db.Uuid
+  conditionId     String?   @map("condition_id") @db.Uuid
+  submittedBy     String    @map("submitted_by") @db.Uuid
+  evidenceFileId  String    @map("evidence_file_id") @db.Uuid
+  remarks         String?   @db.Text
+  status          String    @default("SUBMITTED") @db.VarChar(50) // SUBMITTED, VERIFIED, REJECTED
+  verifiedAt      DateTime? @map("verified_at")
+  verifiedBy      String?   @map("verified_by") @db.Uuid
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  undertaking  Undertaking @relation(fields: [undertakingId], references: [id], onDelete: Cascade)
+  condition    Condition?  @relation(fields: [conditionId], references: [id], onDelete: SetNull)
+  submitter    User        @relation("SubmittedBy", fields: [submittedBy], references: [id])
+  evidenceFile FileObject  @relation("EvidenceFile", fields: [evidenceFileId], references: [id])
+  verifier     User?       @relation("VerifiedBy", fields: [verifiedBy], references: [id])
+
+  @@index([undertakingId])
+  @@index([conditionId])
+  @@map("undertaking_submissions")
+}
+
+// 12. File Objects
+model FileObject {
+  id         String    @id @default(uuid()) @db.Uuid
+  filename   String    @db.VarChar(255)
+  sha256     String    @db.VarChar(64)
+  size       BigInt
+  mime       String    @db.VarChar(100)
+  scanStatus String    @default("PENDING") @map("scan_status") @db.VarChar(50) // PENDING, CLEAN, INFECTED
+  storageKey String    @map("storage_key") @db.VarChar(500)
+  uploadedBy String?   @map("uploaded_by") @db.Uuid
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+  deletedAt  DateTime? @map("deleted_at")
+
+  uploader User? @relation(fields: [uploadedBy], references: [id])
+
+  affidavitUndertakings Undertaking[]           @relation("AffidavitFile")
+  evidenceSubmissions   UndertakingSubmission[] @relation("EvidenceFile")
+  trackedDocuments      TrackedDocument[]
+
+  @@index([sha256])
+  @@index([scanStatus])
+  @@map("file_objects")
+}
+
+// 13. Tracked Documents
+model TrackedDocument {
+  id             String    @id @default(uuid()) @db.Uuid
+  institutionId  String    @map("institution_id") @db.Uuid
+  type           String    @db.VarChar(100) // LEASE, OWNERSHIP_TITLE, FIRE_SAFETY_NOC, FDR_DEPOSIT
+  documentNumber String    @map("document_number") @db.VarChar(150)
+  fileId         String?   @map("file_id") @db.Uuid
+  issueDate      DateTime  @map("issue_date")
+  expiryDate     DateTime? @map("expiry_date")
+  isPerpetual    Boolean   @default(false) @map("is_perpetual")
+  status           String    @default("PENDING") @db.VarChar(50) // VALID, EXPIRING_SOON, EXPIRED, RENEWAL_SUBMITTED, RENEWAL_VERIFIED, RENEWAL_REJECTED
+  versionHistory   Json      @default("[]") @map("version_history") @db.JsonB
+  extractionResult Json?     @map("extraction_result") @db.JsonB
+  verifiedBy       String?   @map("verified_by") @db.Uuid
+  verifiedAt     DateTime? @map("verified_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  institution  Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  file         FileObject? @relation(fields: [fileId], references: [id])
+  verifierUser User?       @relation("VerifiedByUser", fields: [verifiedBy], references: [id])
+
+  @@index([institutionId])
+  @@index([type])
+  @@index([expiryDate])
+  @@index([status])
+  @@map("tracked_documents")
+}
+
+// 14. Due Items
+model DueItem {
+  id              String    @id @default(uuid()) @db.Uuid
+  kind            String    @db.VarChar(100) // PROCESSING_STAGE, EVC_SCHEDULING, EVC_COMPLETION, UNDERTAKING, DOCUMENT_EXPIRY, DOCUMENT_RENEWAL
+  entityType      String    @map("entity_type") @db.VarChar(100)
+  entityId        String    @map("entity_id") @db.Uuid
+  dueAt           DateTime  @map("due_at")
+  status          String    @default("ON_TRACK") @db.VarChar(50) // ON_TRACK, DUE_SOON, OVERDUE, PAUSED, CLOSED
+  escalationLevel Int       @default(0) @map("escalation_level")
+  pausedAt        DateTime? @map("paused_at")
+  slaClockState   Json      @default("{}") @map("sla_clock_state") @db.JsonB
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  stepFirings DueItemStepFiring[]
+
+  @@index([dueAt])
+  @@index([status])
+  @@index([kind, status])
+  @@map("due_items")
+}
+
+// 14b. Due Item Step Firings (Guarantees at-most-once step firing via unique constraint on due_item_id + step_key)
+model DueItemStepFiring {
+  id           String   @id @default(uuid()) @db.Uuid
+  dueItemId    String   @map("due_item_id") @db.Uuid
+  stepKey      String   @map("step_key") @db.VarChar(100)
+  outboxEventId String? @map("outbox_event_id") @db.Uuid
+  firedAt      DateTime @default(now()) @map("fired_at")
+
+  dueItem DueItem @relation(fields: [dueItemId], references: [id], onDelete: Cascade)
+
+  @@unique([dueItemId, stepKey])
+  @@index([dueItemId])
+  @@map("due_item_step_firings")
+}
+
+// 15. Escalation Policies
+model EscalationPolicy {
+  id                   String   @id @default(uuid()) @db.Uuid
+  name                 String   @db.VarChar(150)
+  kind                 String   @db.VarChar(100)
+  reminderOffsets      Json     @map("reminder_offsets") @db.JsonB // [ -7, -3, -1 ] days
+  escalationThresholds Json     @map("escalation_thresholds") @db.JsonB // [ 0, 3, 7 ] days overdue
+  actionPayload        Json     @map("action_payload") @db.JsonB
+  isActive             Boolean  @default(true) @map("is_active")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  @@index([kind, isActive])
+  @@map("escalation_policies")
+}
+
+// 16. Notifications
+model Notification {
+  id             String   @id @default(uuid()) @db.Uuid
+  recipientId    String?  @map("recipient_id") @db.Uuid
+  recipientEmail String   @map("recipient_email") @db.VarChar(255)
+  recipientRole  String   @map("recipient_role") @db.VarChar(50)
+  title          String   @db.VarChar(255)
+  body           String   @db.Text
+  channel        String   @default("EMAIL") @db.VarChar(50) // EMAIL, SMS, IN_APP, WEB_PUSH
+  templateId     String?  @map("template_id") @db.VarChar(100)
+  metadata       Json     @default("{}") @db.JsonB
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  recipient    User?                  @relation(fields: [recipientId], references: [id])
+  deliveries   NotificationDelivery[]
+
+  @@index([recipientId])
+  @@index([recipientEmail])
+  @@map("notifications")
+}
+
+// 17. Notification Deliveries
+model NotificationDelivery {
+  id             String    @id @default(uuid()) @db.Uuid
+  notificationId String    @map("notification_id") @db.Uuid
+  attemptNumber  Int       @default(1) @map("attempt_number")
+  status         String    @default("QUEUED") @db.VarChar(50) // QUEUED, SENT, FAILED
+  errorMessage   String?   @map("error_message") @db.Text
+  sentAt         DateTime? @map("sent_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@index([notificationId])
+  @@index([status])
+  @@map("notification_deliveries")
+}
+
+// 18. Outbox Events (Transactional Outbox Pattern)
+model OutboxEvent {
+  id            String    @id @default(uuid()) @db.Uuid
+  aggregateType String    @map("aggregate_type") @db.VarChar(100)
+  aggregateId   String    @map("aggregate_id") @db.Uuid
+  eventType     String    @map("event_type") @db.VarChar(150)
+  payload       Json      @db.JsonB
+  status        String    @default("PENDING") @db.VarChar(50) // PENDING, PROCESSED, FAILED
+  retryCount    Int       @default(0) @map("retry_count")
+  lastError     String?   @map("last_error") @db.Text
+  processedAt   DateTime? @map("processed_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@index([status, createdAt])
+  @@map("outbox_events")
+}
+
+// 19. Audit Log (Immutable Transactional Audit Ledger)
+model AuditLog {
+  id            String   @id @default(uuid()) @db.Uuid
+  entityType    String   @map("entity_type") @db.VarChar(100)
+  entityId      String   @map("entity_id") @db.Uuid
+  action        String   @db.VarChar(100)
+  actorId       String   @map("actor_id") @db.VarChar(255)
+  actorRole     String   @map("actor_role") @db.VarChar(50)
+  previousState Json?    @map("previous_state") @db.JsonB
+  newState      Json     @map("new_state") @db.JsonB
+  ipAddress     String?  @map("ip_address") @db.VarChar(50)
+  rationale     String?  @db.Text
+  timestamp     DateTime @default(now())
+  prevHash      String   @default("GENESIS") @map("prev_hash") @db.VarChar(64)
+  hash          String   @default("") @db.VarChar(64)
+
+  @@index([entityType, entityId])
+  @@index([actorId])
+  @@index([timestamp])
+  @@map("audit_log")
+}
+
+// 20. Holiday Calendar
+model HolidayCalendar {
+  id          String   @id @default(uuid()) @db.Uuid
+  date        DateTime @db.Date
+  name        String   @db.VarChar(150)
+  description String?  @db.Text
+  regionId    String?  @map("region_id") @db.Uuid
+  isNational  Boolean  @default(false) @map("is_national")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  region Region? @relation(fields: [regionId], references: [id])
+
+  @@index([date])
+  @@index([regionId])
+  @@map("holiday_calendar")
+}
+
+// 21. System Settings
+model SystemSetting {
+  id          String   @id @default(uuid()) @db.Uuid
+  key         String   @unique @db.VarChar(100)
+  value       Json     @db.JsonB
+  description String?  @db.Text
+  updatedBy   String?  @map("updated_by") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("system_settings")
+}

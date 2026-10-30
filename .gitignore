@@ -1,0 +1,50 @@
+# Dependencies
+node_modules
+.pnpm-store
+
+# Build & Output
+.next
+dist
+build
+out
+.turbo
+*.tsbuildinfo
+
+# Python & uv
+.venv
+__pycache__
+*.py[cod]
+*$py.class
+.pytest_cache
+.ruff_cache
+.mypy_cache
+.uv
+
+# Logs & Environment
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+!.env.example
+
+# IDEs & System
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+Thumbs.db
+.DS_Store
+
+# Test Coverage
+coverage
+.nyc_output

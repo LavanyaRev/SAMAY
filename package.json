@@ -1,0 +1,45 @@
+{
+  "name": "samay-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SAMAY — Smart AICTE Monitoring & Approval Yojana",
+  "packageManager": "pnpm@12.16.1",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "dev:up": "docker compose -f infra/docker-compose.yml up -d",
+    "dev:down": "docker compose -f infra/docker-compose.yml down",
+    "dev:reset": "docker compose -f infra/docker-compose.yml down -v && docker compose -f infra/docker-compose.yml up -d",
+    "db:migrate": "pnpm --filter @samay/database db:migrate",
+    "db:seed": "pnpm --filter @samay/database db:seed",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\"",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
+    "eslint": "^8.57.1",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.2.11",
+    "prettier": "^3.4.2",
+    "turbo": "^2.4.4",
+    "typescript": "^5.7.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@nestjs/core",
+      "@prisma/client",
+      "@prisma/engines",
+      "@scarf/scarf",
+      "cpu-features",
+      "esbuild",
+      "prisma",
+      "protobufjs",
+      "ssh2",
+      "@types/node"
+    ]
+  }
+}
