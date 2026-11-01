@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import React, { useEffect, useState, useCallback } from 'react';
-import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import React, { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
   AlertTriangle,
@@ -12,10 +12,10 @@ import {
   ShieldCheck,
   Send,
   SlidersHorizontal,
-} from 'lucide-react';
-import { AppShell } from '@/components/shell/app-shell';
-import { useApp, type StatutoryRole } from '@/lib/app-context';
-import { DEMO_ROLE_ACCOUNTS } from '@/lib/mock-data';
+} from "lucide-react";
+import { AppShell } from "@/components/shell/app-shell";
+import { useApp, type StatutoryRole } from "@/lib/app-context";
+import { DEMO_ROLE_ACCOUNTS } from "@/lib/mock-data";
 import {
   samayApiClient,
   OptimisticConflictError,
@@ -23,49 +23,49 @@ import {
   type AllowedActionDto,
   type LifecycleApplication,
   type LifecycleDocumentFile,
-} from '@/lib/api-client';
-import { StatusChip } from '@/components/ui/status-chip';
-import { SlaBadge } from '@/components/ui/sla-badge';
-import { Timeline, type TimelineEventItem } from '@/components/ui/timeline';
-import { FileDropzone } from '@/components/ui/file-dropzone';
-import { DocumentViewer } from '@/components/ui/document-viewer';
-import { ConflictDialog } from '@/components/ui/conflict-dialog';
-import { AdvisoryBanner } from '@/components/ui/advisory-banner';
-import { AuditSeal } from '@/components/ui/audit-seal';
+} from "@/lib/api-client";
+import { StatusChip } from "@/components/ui/status-chip";
+import { SlaBadge } from "@/components/ui/sla-badge";
+import { Timeline, type TimelineEventItem } from "@/components/ui/timeline";
+import { FileDropzone } from "@/components/ui/file-dropzone";
+import { DocumentViewer } from "@/components/ui/document-viewer";
+import { ConflictDialog } from "@/components/ui/conflict-dialog";
+import { AdvisoryBanner } from "@/components/ui/advisory-banner";
+import { AuditSeal } from "@/components/ui/audit-seal";
 
 type DetailTab =
-  | 'overview'
-  | 'documents'
-  | 'timeline-audit'
-  | 'communications'
-  | 'case-summary';
+  | "overview"
+  | "documents"
+  | "timeline-audit"
+  | "communications"
+  | "case-summary";
 
 export default function ApplicationDetailPage() {
   const params = useParams<{ id: string }>();
-  const appId = params?.id || '44444444-4444-4444-8444-444444444401';
+  const appId = params?.id || "44444444-4444-4444-8444-444444444401";
   const { user, isAuthReady, locale, loginWithApi } = useApp();
   const router = useRouter();
 
   const [app, setApp] = useState<LifecycleApplication | null>(null);
   const [allowedActions, setAllowedActions] = useState<AllowedActionDto[]>([]);
-  const [activeTab, setActiveTab] = useState<DetailTab>('overview');
+  const [activeTab, setActiveTab] = useState<DetailTab>("overview");
   const [selectedDoc, setSelectedDoc] = useState<LifecycleDocumentFile | null>(
     null,
   );
 
   // Officer Action Drawer state
   const [drawerOpen, setDrawerOpen] = useState(true);
-  const [selectedAction, setSelectedAction] = useState<string>('');
-  const [actionReason, setActionReason] = useState<string>('');
+  const [selectedAction, setSelectedAction] = useState<string>("");
+  const [actionReason, setActionReason] = useState<string>("");
   const [actionReasonCode, setActionReasonCode] = useState<string>(
-    'DEF_FACULTY_CADRE_SHORTFALL',
+    "DEF_FACULTY_CADRE_SHORTFALL",
   );
   const [actionFeedback, setActionFeedback] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
   // Institution Respond-to-Return state
   const [clarificationNote, setClarificationNote] = useState<string>(
-    'Uploaded renewed notarized faculty cadre & fire safety compliance annexure rectifying scrutiny observation.',
+    "Uploaded renewed notarized faculty cadre & fire safety compliance annexure rectifying scrutiny observation.",
   );
   const [clarificationDocs, setClarificationDocs] = useState<
     LifecycleDocumentFile[]
@@ -78,7 +78,7 @@ export default function ApplicationDetailPage() {
     latest: LifecycleApplication | null;
   }>({
     open: false,
-    message: '',
+    message: "",
     latest: null,
   });
 
@@ -98,7 +98,7 @@ export default function ApplicationDetailPage() {
             actions.some((a) => a.action === prev) ? prev : actions[0].action,
           );
         } else {
-          setSelectedAction('');
+          setSelectedAction("");
         }
       }
     } catch {
@@ -112,7 +112,7 @@ export default function ApplicationDetailPage() {
 
   useEffect(() => {
     if (isAuthReady && !user) {
-      router.replace('/login');
+      router.replace("/login");
     }
   }, [isAuthReady, user, router]);
 
@@ -125,7 +125,7 @@ export default function ApplicationDetailPage() {
   }
 
   const role: StatutoryRole = user.role;
-  const isInstitution = role === 'INSTITUTION';
+  const isInstitution = role === "INSTITUTION";
   const currentAllowedActionObj = allowedActions.find(
     (a) => a.action === selectedAction,
   );
@@ -139,20 +139,13 @@ export default function ApplicationDetailPage() {
     actorRole: item.actorRole,
     timestamp: item.completedAt || item.startedAt,
     status:
-      item.status === 'ACTIVE'
+      item.status === "ACTIVE"
         ? app.status
-        : item.status === 'RETURNED'
-          ? 'SCRUTINY_DEFICIENT'
-          : 'SUBMITTED',
-    rationale: item.notes || 'Stage recorded in statutory timeline.',
-    stateType:
-      item.status === 'COMPLETED'
-        ? 'completed'
-        : item.status === 'RETURNED' || item.status === 'REVERTED'
-          ? 'Attention' === 'Attention'
-            ? 'current'
-            : 'completed'
-          : 'current',
+        : item.status === "RETURNED"
+          ? "SCRUTINY_DEFICIENT"
+          : "SUBMITTED",
+    rationale: item.notes || "Stage recorded in statutory timeline.",
+    stateType: item.status === "COMPLETED" ? "completed" : "current",
   }));
 
   const handleExecuteOfficerAction = async () => {
@@ -180,13 +173,13 @@ export default function ApplicationDetailPage() {
         actorRole: role,
         reason: actionReason.trim() || undefined,
         reasonCode:
-          currentAllowedActionObj.action === 'return_for_deficiency'
+          currentAllowedActionObj.action === "return_for_deficiency"
             ? actionReasonCode
             : undefined,
       });
 
       setApp(updated);
-      setActionReason('');
+      setActionReason("");
       setActionFeedback(
         `Action "${currentAllowedActionObj.label}" committed atomically (New Stage: ${updated.stage}, Version: v${updated.version}).`,
       );
@@ -195,7 +188,7 @@ export default function ApplicationDetailPage() {
         role,
       );
       setAllowedActions(nextActions);
-      setSelectedAction(nextActions[0]?.action || '');
+      setSelectedAction(nextActions[0]?.action || "");
     } catch (err) {
       if (err instanceof OptimisticConflictError) {
         setConflictState({
@@ -216,8 +209,8 @@ export default function ApplicationDetailPage() {
         ? clarificationDocs
         : [
             scanUploadedFileMock({
-              checklistItem: 'Deficiency Clarification & Rectified Annexure',
-              filename: 'Clarification_Rectified_Annexure_Signed.pdf',
+              checklistItem: "Deficiency Clarification & Rectified Annexure",
+              filename: "Clarification_Rectified_Annexure_Signed.pdf",
               sizeBytes: 1320400,
               uploadedBy: user.fullName,
             }),
@@ -226,11 +219,11 @@ export default function ApplicationDetailPage() {
     try {
       const updated = await samayApiClient.performWorkflowAction({
         applicationId: app.id,
-        action: 'submit',
+        action: "submit",
         expectedVersion: app.version,
         idempotencyKey: `inst-clarify-${app.id}-v${app.version}`,
         actorName: user.fullName,
-        actorRole: 'INSTITUTION',
+        actorRole: "INSTITUTION",
         reason: clarificationNote,
         newDocuments: docsToAttach,
       });
@@ -294,11 +287,11 @@ export default function ApplicationDetailPage() {
               onClick={() => loginWithApi(acct.email, acct.password)}
               className={`rounded-xs border px-2 py-1 text-[11px] font-medium transition-colors ${
                 role === acct.role
-                  ? 'border-brand bg-brand text-brand-on font-semibold'
-                  : 'border-border bg-surface-raised text-text-primary hover:border-brand'
+                  ? "border-brand bg-brand text-brand-on font-semibold"
+                  : "border-border bg-surface-raised text-text-primary hover:border-brand"
               }`}
             >
-              {locale === 'hi' ? acct.labelHi : acct.label}
+              {locale === "hi" ? acct.labelHi : acct.label}
             </button>
           ))}
         </div>
@@ -331,15 +324,16 @@ export default function ApplicationDetailPage() {
               </span>
             </div>
             <h1 className="mt-1.5 font-serif text-lg font-bold text-text-primary">
-              {locale === 'hi' ? app.institutionNameHi : app.institutionName}
+              {locale === "hi" ? app.institutionNameHi : app.institutionName}
             </h1>
             <p className="text-xs text-text-muted">
-              AICTE ID: <span className="font-mono">{app.aictePermanentId}</span>{' '}
-              • {app.programStream} ({app.proposedIntake} seats) • Pipeline:{' '}
+              AICTE ID:{" "}
+              <span className="font-mono">{app.aictePermanentId}</span> •{" "}
+              {app.programStream} ({app.proposedIntake} seats) • Pipeline:{" "}
               <span className="font-mono font-semibold">
                 {app.pipelineCode}@{app.pipelineVersion}
-              </span>{' '}
-              • Ball With:{' '}
+              </span>{" "}
+              • Ball With:{" "}
               <span className="font-mono font-bold text-brand">
                 {app.ballWith}
               </span>
@@ -350,7 +344,7 @@ export default function ApplicationDetailPage() {
             <AuditSeal
               ledgerHash={`SHA256:${
                 app.auditTrail[app.auditTrail.length - 1]?.hash.slice(0, 12) ||
-                'GENESIS'
+                "GENESIS"
               }`}
             />
             {!isInstitution && (
@@ -361,7 +355,9 @@ export default function ApplicationDetailPage() {
                 className="inline-flex items-center gap-1.5 rounded-xs border border-brand bg-brand px-3 py-1.5 text-xs font-semibold text-brand-on hover:bg-brand-hover"
               >
                 <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
-                <span>{drawerOpen ? 'Hide Action Drawer' : 'Open Action Drawer'}</span>
+                <span>
+                  {drawerOpen ? "Hide Action Drawer" : "Open Action Drawer"}
+                </span>
               </button>
             )}
           </div>
@@ -391,7 +387,7 @@ export default function ApplicationDetailPage() {
       {/* =====================================================================
           INSTITUTION RESPOND-TO-RETURN PANEL (When in DEFICIENCY_RECTIFICATION)
          ===================================================================== */}
-      {app.stage === 'DEFICIENCY_RECTIFICATION' && (
+      {app.stage === "DEFICIENCY_RECTIFICATION" && (
         <section
           aria-label="Respond to Scrutiny Deficiency Return"
           data-testid="respond-to-return-panel"
@@ -424,7 +420,7 @@ export default function ApplicationDetailPage() {
                 className="mt-1 rounded-xs border border-border bg-surface-sunken p-3 text-xs font-medium text-text-primary"
               >
                 {app.lastDeficiencyReason ||
-                  'Deficiency noted during documentary scrutiny verification.'}
+                  "Deficiency noted during documentary scrutiny verification."}
               </p>
 
               {isInstitution && (
@@ -438,7 +434,7 @@ export default function ApplicationDetailPage() {
                     onFileSelected={(f) => {
                       const scanned = scanUploadedFileMock({
                         checklistItem:
-                          'Deficiency Rectification Clarification Annexure',
+                          "Deficiency Rectification Clarification Annexure",
                         filename: f.name,
                         sizeBytes: f.sizeBytes,
                         uploadedBy: user.fullName,
@@ -489,8 +485,8 @@ export default function ApplicationDetailPage() {
         <div
           className={
             !isInstitution && drawerOpen
-              ? 'space-y-4 lg:col-span-8'
-              : 'space-y-4 lg:col-span-12'
+              ? "space-y-4 lg:col-span-8"
+              : "space-y-4 lg:col-span-12"
           }
         >
           {/* 5-Tab Bar */}
@@ -501,20 +497,20 @@ export default function ApplicationDetailPage() {
           >
             {(
               [
-                { id: 'overview', label: '1. Overview' },
+                { id: "overview", label: "1. Overview" },
                 {
-                  id: 'documents',
+                  id: "documents",
                   label: `2. Documents (${app.documents.length})`,
                 },
                 {
-                  id: 'timeline-audit',
+                  id: "timeline-audit",
                   label: `3. Timeline & Audit (${app.auditTrail.length})`,
                 },
                 {
-                  id: 'communications',
+                  id: "communications",
                   label: `4. Communications (${app.communications.length})`,
                 },
-                { id: 'case-summary', label: '5. Case Summary (Advisory)' },
+                { id: "case-summary", label: "5. Case Summary (Advisory)" },
               ] as const
             ).map((tab) => (
               <button
@@ -526,8 +522,8 @@ export default function ApplicationDetailPage() {
                 onClick={() => setActiveTab(tab.id)}
                 className={`rounded-xs border px-3 py-1.5 text-xs font-semibold transition-colors ${
                   activeTab === tab.id
-                    ? 'border-brand bg-brand text-brand-on'
-                    : 'border-border bg-surface-raised text-text-primary hover:border-brand'
+                    ? "border-brand bg-brand text-brand-on"
+                    : "border-border bg-surface-raised text-text-primary hover:border-brand"
                 }`}
               >
                 {tab.label}
@@ -536,7 +532,7 @@ export default function ApplicationDetailPage() {
           </div>
 
           {/* TAB 1: OVERVIEW */}
-          {activeTab === 'overview' && (
+          {activeTab === "overview" && (
             <div className="space-y-4" data-testid="tab-panel-overview">
               <div className="grid grid-cols-1 gap-4 rounded-sm border border-border bg-surface-raised p-4 sm:grid-cols-3">
                 <div>
@@ -575,7 +571,7 @@ export default function ApplicationDetailPage() {
           )}
 
           {/* TAB 2: DOCUMENTS (PDF & IMAGE VIEWER WITH DOWNLOAD, SCAN STATUS & SHA-256) */}
-          {activeTab === 'documents' && (
+          {activeTab === "documents" && (
             <div data-testid="tab-panel-documents">
               <DocumentViewer
                 document={selectedDoc}
@@ -586,7 +582,7 @@ export default function ApplicationDetailPage() {
           )}
 
           {/* TAB 3: TIMELINE & AUDIT LEDGER */}
-          {activeTab === 'timeline-audit' && (
+          {activeTab === "timeline-audit" && (
             <div className="space-y-4" data-testid="tab-panel-timeline-audit">
               <div className="rounded-sm border border-border bg-surface-raised p-4">
                 <h2 className="font-serif text-sm font-bold text-text-primary mb-3">
@@ -602,8 +598,11 @@ export default function ApplicationDetailPage() {
                       Tamper-Evident SHA-256 Hash-Chained Audit Log
                     </h2>
                     <p className="text-xs text-text-muted">
-                      Append-only ledger enforced by PostgreSQL trigger{' '}
-                      <code className="font-mono">audit_log_immutable_trigger</code>.
+                      Append-only ledger enforced by PostgreSQL trigger{" "}
+                      <code className="font-mono">
+                        audit_log_immutable_trigger
+                      </code>
+                      .
                     </p>
                   </div>
                   <span className="inline-flex items-center gap-1 rounded-xs border border-sla-on-track px-2.5 py-1 font-mono text-[11px] font-bold text-sla-on-track">
@@ -623,7 +622,8 @@ export default function ApplicationDetailPage() {
                           #{idx + 1} • {entry.action}
                         </span>
                         <span className="font-mono text-[11px] text-text-muted">
-                          {entry.timestamp} • {entry.actorName} ({entry.actorRole})
+                          {entry.timestamp} • {entry.actorName} (
+                          {entry.actorRole})
                         </span>
                       </div>
                       <p className="mt-1 text-text-primary">
@@ -645,7 +645,7 @@ export default function ApplicationDetailPage() {
           )}
 
           {/* TAB 4: COMMUNICATIONS */}
-          {activeTab === 'communications' && (
+          {activeTab === "communications" && (
             <div
               className="rounded-sm border border-border bg-surface-raised p-4"
               data-testid="tab-panel-communications"
@@ -681,7 +681,7 @@ export default function ApplicationDetailPage() {
           )}
 
           {/* TAB 5: CASE SUMMARY (PLACEHOLDER) */}
-          {activeTab === 'case-summary' && (
+          {activeTab === "case-summary" && (
             <div className="space-y-4" data-testid="tab-panel-case-summary">
               <AdvisoryBanner
                 ruleId="RULE-CASE-SUMMARY-PLACEHOLDER"
@@ -735,9 +735,9 @@ export default function ApplicationDetailPage() {
 
             {allowedActions.length === 0 ? (
               <div className="rounded-xs border border-border bg-surface p-3 text-xs text-text-muted">
-                No workflow transitions are currently permitted for role{' '}
-                <strong className="font-mono">{role}</strong> at stage{' '}
-                <strong className="font-mono">{app.stage}</strong> (Ball with:{' '}
+                No workflow transitions are currently permitted for role{" "}
+                <strong className="font-mono">{role}</strong> at stage{" "}
+                <strong className="font-mono">{app.stage}</strong> (Ball with:{" "}
                 {app.ballWith}).
               </div>
             ) : (
@@ -757,7 +757,10 @@ export default function ApplicationDetailPage() {
                     className="mt-1 w-full rounded-xs border border-border bg-surface px-3 py-2 text-xs font-semibold text-text-primary"
                   >
                     {allowedActions.map((act) => (
-                      <option key={`${act.action}-${act.toStage}`} value={act.action}>
+                      <option
+                        key={`${act.action}-${act.toStage}`}
+                        value={act.action}
+                      >
                         {act.label}
                       </option>
                     ))}
@@ -769,7 +772,8 @@ export default function ApplicationDetailPage() {
                   )}
                 </div>
 
-                {currentAllowedActionObj?.action === 'return_for_deficiency' && (
+                {currentAllowedActionObj?.action ===
+                  "return_for_deficiency" && (
                   <div>
                     <label
                       htmlFor="drawer-reason-code"
@@ -786,10 +790,10 @@ export default function ApplicationDetailPage() {
                     >
                       {(
                         currentAllowedActionObj.allowedReasonCodes || [
-                          'DEF_FACULTY_CADRE_SHORTFALL',
-                          'DEF_LAND_DOCS_INCOMPLETE',
-                          'DEF_FIRE_SAFETY_EXPIRED',
-                          'DEF_FDR_ENCUMBRANCE_MISMATCH',
+                          "DEF_FACULTY_CADRE_SHORTFALL",
+                          "DEF_LAND_DOCS_INCOMPLETE",
+                          "DEF_FIRE_SAFETY_EXPIRED",
+                          "DEF_FDR_ENCUMBRANCE_MISMATCH",
                         ]
                       ).map((code) => (
                         <option key={code} value={code}>
@@ -805,7 +809,7 @@ export default function ApplicationDetailPage() {
                     htmlFor="drawer-reason-textarea"
                     className="block text-xs font-semibold text-text-primary"
                   >
-                    Speaking Order Rationale / Observation{' '}
+                    Speaking Order Rationale / Observation{" "}
                     {currentAllowedActionObj?.requiresReason && (
                       <span className="text-sla-overdue">* (Mandatory)</span>
                     )}
@@ -828,9 +832,7 @@ export default function ApplicationDetailPage() {
                   className=" flex w-full items-center justify-center gap-1.5 rounded-xs border border-brand bg-brand px-4 py-2 text-xs font-semibold text-brand-on hover:bg-brand-hover"
                 >
                   <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
-                  <span>
-                    Sign & Execute Action (Expected v{app.version})
-                  </span>
+                  <span>Sign & Execute Action (Expected v{app.version})</span>
                 </button>
               </div>
             )}
@@ -860,14 +862,12 @@ export default function ApplicationDetailPage() {
         latestApplication={conflictState.latest}
         onReloadLatest={(latest) => {
           setApp(latest);
-          setConflictState({ open: false, message: '', latest: null });
+          setConflictState({ open: false, message: "", latest: null });
           setActionFeedback(
             `Synchronized dossier to latest version v${latest.version} (Stage: ${latest.stage}).`,
           );
         }}
-        onClose={() =>
-          setConflictState((prev) => ({ ...prev, open: false }))
-        }
+        onClose={() => setConflictState((prev) => ({ ...prev, open: false }))}
       />
     </AppShell>
   );

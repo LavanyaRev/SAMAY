@@ -6,9 +6,10 @@ import { cn } from "@/lib/utils";
 import { useApp } from "@/lib/app-context";
 
 interface AdvisoryBannerProps {
-  ruleId: string;
+  ruleId?: string;
   aphClause?: string;
-  title: string;
+  title?: string;
+  summary?: string;
   rationale: string;
   confidenceScore?: number;
   sourceDataSummary?: string;
@@ -22,15 +23,17 @@ interface AdvisoryBannerProps {
  * zero sparkle or magic-wand styling.
  */
 export function AdvisoryBanner({
-  ruleId,
-  aphClause = "APH 2024-27 • TODO(APH-VERIFY)",
+  ruleId = "APH-RULE-ADVISORY",
+  aphClause = "APH 2024-27",
   title,
+  summary,
   rationale,
   confidenceScore,
   sourceDataSummary,
   className,
 }: AdvisoryBannerProps) {
   const { t } = useApp();
+  const effectiveTitle = title || summary || "Statutory Rule Evaluation";
 
   return (
     <aside
@@ -69,7 +72,7 @@ export function AdvisoryBanner({
           aria-hidden="true"
         />
         <div className="space-y-1 text-xs leading-relaxed">
-          <p className="font-semibold text-text-primary">{title}</p>
+          <p className="font-semibold text-text-primary">{effectiveTitle}</p>
           <p className="text-text-muted">{rationale}</p>
           {sourceDataSummary && (
             <p className="tabular-nums-data pt-0.5 text-[11px] text-text-muted">

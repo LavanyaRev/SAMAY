@@ -7,8 +7,19 @@ import {
   Post,
   Put,
   Query,
+  UseGuards,
 } from "@nestjs/common";
-import { ApiTags, ApiOperation, ApiResponse, ApiParam } from "@nestjs/swagger";
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiBearerAuth,
+} from "@nestjs/swagger";
+import { UserRole } from "@samay/shared";
+import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { RolesGuard } from "../auth/roles.guard";
+import { Roles } from "../auth/roles.decorator";
 import { AdminService } from "./admin.service";
 import {
   ComplianceScoreWeights,
@@ -17,6 +28,8 @@ import {
 } from "./hero-features.service";
 
 @ApiTags("Admin")
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller("admin")
 export class AdminController {
   constructor(
@@ -26,7 +39,8 @@ export class AdminController {
 
   @Get("config")
   @ApiOperation({
-    summary: "Get system parameters, demo clock state, and active APH configuration",
+    summary:
+      "Get system parameters, demo clock state, and active APH configuration",
   })
   @ApiResponse({ status: 200, description: "System configuration" })
   getConfig() {
@@ -43,8 +57,10 @@ export class AdminController {
   }
 
   @Post("clock/offset")
+  @Roles(UserRole.ADMIN)
   @ApiOperation({
-    summary: "Set demo clock offset in milliseconds (stored in system_settings & audited)",
+    summary:
+      "Set demo clock offset in milliseconds (stored in system_settings & audited)",
   })
   @ApiResponse({ status: 200, description: "Clock offset updated and audited" })
   setClockOffset(
@@ -58,6 +74,7 @@ export class AdminController {
   }
 
   @Post("clock/advance")
+  @Roles(UserRole.ADMIN)
   @ApiOperation({
     summary: "Advance demo clock by N days and/or hours (audited)",
   })
@@ -75,6 +92,7 @@ export class AdminController {
   }
 
   @Post("clock/reset")
+  @Roles(UserRole.ADMIN)
   @ApiOperation({
     summary: "Reset demo clock offset to real system time (audited)",
   })
@@ -84,6 +102,7 @@ export class AdminController {
   }
 
   @Get("holidays")
+  @Roles(UserRole.ADMIN, UserRole.BUREAU_OFFICER, UserRole.REGIONAL_OFFICER)
   @ApiOperation({
     summary: "List holiday_calendar entries (national and regional)",
   })
@@ -92,6 +111,7 @@ export class AdminController {
   }
 
   @Post("holidays")
+  @Roles(UserRole.ADMIN)
   @ApiOperation({
     summary: "Create a holiday in holiday_calendar",
   })
@@ -137,6 +157,7 @@ export class AdminController {
   }
 
   @Post("deadlines/sweep")
+  @Roles(UserRole.ADMIN)
   @ApiOperation({
     summary: "Trigger on-demand deadline sweep across active due items",
   })
@@ -149,6 +170,7 @@ export class AdminController {
    * ======================================================================== */
 
   @Post("time-travel/jump")
+  @Roles(UserRole.ADMIN)
   @ApiOperation({
     summary:
       "Jump demo clock (+1d, +1w, +1m, or date picker), run sweep & notification worker immediately, and return live alert feed",
@@ -167,6 +189,7 @@ export class AdminController {
   }
 
   @Get("scenario")
+  @Roles(UserRole.ADMIN)
   @ApiOperation({
     summary: "Get JSON-defined scenario runner state and live alert feed",
   })
@@ -175,6 +198,7 @@ export class AdminController {
   }
 
   @Post("scenario/next")
+  @Roles(UserRole.ADMIN)
   @ApiOperation({
     summary:
       "Execute next step in the JSON scenario runner (submit -> return -> respond -> EVC delay -> undertaking miss -> lease expiry)",
@@ -184,6 +208,7 @@ export class AdminController {
   }
 
   @Post("scenario/reset")
+  @Roles(UserRole.ADMIN)
   @ApiOperation({
     summary: "Reset JSON scenario runner and demo clock",
   })
@@ -196,16 +221,20 @@ export class AdminController {
    * ======================================================================== */
 
   @Get("tamper-demo/state")
+  @Roles(UserRole.ADMIN)
   @ApiOperation({
-    summary: "Get current audit chain entries and verification status for Tamper Demo",
+    summary:
+      "Get current audit chain entries and verification status for Tamper Demo",
   })
   getTamperDemoState() {
     return this.heroFeatures.getTamperDemoState();
   }
 
   @Post("tamper-demo/tamper")
+  @Roles(UserRole.ADMIN)
   @ApiOperation({
-    summary: "Tamper one audit row in demo chain (disabled in production builds)",
+    summary:
+      "Tamper one audit row in demo chain (disabled in production builds)",
   })
   tamperAuditRow(
     @Body() body?: { entryIndex?: number; tamperedRationale?: string },
@@ -214,6 +243,7 @@ export class AdminController {
   }
 
   @Get("tamper-demo/verify")
+  @Roles(UserRole.ADMIN)
   @ApiOperation({
     summary: "Verify hash chain and pinpoint the exact broken link",
   })
@@ -222,6 +252,7 @@ export class AdminController {
   }
 
   @Post("tamper-demo/repair")
+  @Roles(UserRole.ADMIN)
   @ApiOperation({
     summary: "Repair demo state to restore untampered audit rows",
   })
@@ -235,7 +266,8 @@ export class AdminController {
 
   @Get("compliance-score/weights")
   @ApiOperation({
-    summary: "Get configurable weights for the advisory Compliance Health Score",
+    summary:
+      "Get configurable weights for the advisory Compliance Health Score",
   })
   getComplianceWeights() {
     return this.heroFeatures.getComplianceScoreWeights();
@@ -243,10 +275,15 @@ export class AdminController {
 
   @Put("compliance-score/weights")
   @ApiOperation({
-    summary: "Update configurable weights for the advisory Compliance Health Score",
+    summary:
+      "Update configurable weights for the advisory Compliance Health Score",
   })
   updateComplianceWeights(
-    @Body() body: { weights: Partial<ComplianceScoreWeights>; actorId?: string },
+    @Body()
+    body: {
+      weights: Partial<ComplianceScoreWeights>;
+      actorId?: string;
+    },
   ) {
     return this.heroFeatures.updateComplianceScoreWeights(
       body.weights,
@@ -269,7 +306,8 @@ export class AdminController {
 
   @Get("simulator/baseline")
   @ApiOperation({
-    summary: "Get active pipeline timelines, escalation delays, and published versions",
+    summary:
+      "Get active pipeline timelines, escalation delays, and published versions",
   })
   getSimulatorBaseline() {
     return this.heroFeatures.getLiveSimulatorBaseline();
@@ -286,7 +324,8 @@ export class AdminController {
 
   @Post("simulator/publish")
   @ApiOperation({
-    summary: "Publish a new pipeline/policy version (requires reason and is audited)",
+    summary:
+      "Publish a new pipeline/policy version (requires reason and is audited)",
   })
   publishDraftVersion(
     @Body()

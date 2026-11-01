@@ -14,6 +14,7 @@ import { DashboardsModule } from "./modules/dashboards/dashboards.module";
 import { ReportsModule } from "./modules/reports/reports.module";
 import { AuditModule } from "./modules/audit/audit.module";
 import { AdminModule } from "./modules/admin/admin.module";
+import { AphRagModule } from "./rag/aph-rag.module";
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { AdminModule } from "./modules/admin/admin.module";
     ReportsModule,
     AuditModule,
     AdminModule,
+    AphRagModule,
   ],
 })
 export class AppModule {}

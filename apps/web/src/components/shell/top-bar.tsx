@@ -1,363 +1,327 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import {
-  Search,
-  Bell,
-  Sun,
-  Moon,
-  Languages,
-  UserCheck,
-  LogOut,
-  ChevronDown,
-  Clock,
-  ExternalLink,
-  CheckCheck,
-  SlidersHorizontal,
-} from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { Search, Bell, LogOut, Shield, User } from "lucide-react";
 import { useApp, type StatutoryRole } from "@/lib/app-context";
-import { DEMO_ROLE_ACCOUNTS } from "@/lib/mock-data";
-import {
-  getNotificationsSnapshot,
-  subscribeNotificationsStore,
-  markNotificationRead,
-  markAllNotificationsRead,
-} from "@/lib/notifications-client";
+import { cn } from "@/lib/utils";
+
+interface RoleNavTab {
+  label: string;
+  labelHi: string;
+  href: string;
+}
+
+const ROLE_TABS: Record<StatutoryRole, RoleNavTab[]> = {
+  INSTITUTION: [
+    {
+      label: "Role Workspace",
+      labelHi: "कार्यक्षेत्र",
+      href: "/institution/workspace",
+    },
+    {
+      label: "My Applications",
+      labelHi: "मेरे आवेदन",
+      href: "/institution/applications",
+    },
+    {
+      label: "Undertakings & Evidence",
+      labelHi: "वचनबद्धता एवं साक्ष्य",
+      href: "/institution/undertakings",
+    },
+    {
+      label: "Document Validity",
+      labelHi: "दस्तावेज़ वैधता",
+      href: "/institution/validity",
+    },
+  ],
+  REGIONAL_OFFICER: [
+    {
+      label: "WRO Workbench",
+      labelHi: "डब्ल्यूआरओ वर्कबेंच",
+      href: "/regional/workbench",
+    },
+    {
+      label: "Scrutiny Queue",
+      labelHi: "संवीक्षा कतार",
+      href: "/regional/scrutiny",
+    },
+    {
+      label: "EVC Inspections",
+      labelHi: "ईवीसी निरीक्षण",
+      href: "/regional/evc",
+    },
+    {
+      label: "SCN Management",
+      labelHi: "कारण बताओ नोटिस",
+      href: "/regional/scn",
+    },
+    {
+      label: "Regional Pendency",
+      labelHi: "क्षेत्रीय लंबितता",
+      href: "/regional/pendency",
+    },
+  ],
+  BUREAU_OFFICER: [
+    {
+      label: "Pan-India HQ Dashboard",
+      labelHi: "मुख्यालय डैशबोर्ड",
+      href: "/bureau/hq",
+    },
+    { label: "SCN Register", labelHi: "एससीएन रजिस्टर", href: "/bureau/scn" },
+    {
+      label: "Escalation L3 Register",
+      labelHi: "एल-3 रजिस्टर",
+      href: "/bureau/escalations",
+    },
+    {
+      label: "Global Policy Matrix",
+      labelHi: "नीति मैट्रिक्स",
+      href: "/bureau/policy-matrix",
+    },
+  ],
+  COMMITTEE_MEMBER: [
+    {
+      label: "Expert Panel Queue",
+      labelHi: "विशेषज्ञ पैनल",
+      href: "/committee/evc-visits",
+    },
+    {
+      label: "SAC - Standing Appeals",
+      labelHi: "एसएसी अपीलीय समिति",
+      href: "/committee/sac",
+    },
+    {
+      label: "SHC - Standing Hearings",
+      labelHi: "एसएचसी सुनवाई समिति",
+      href: "/committee/shc",
+    },
+  ],
+  ADMIN: [
+    {
+      label: "System Governance",
+      labelHi: "प्रणाली शासन",
+      href: "/admin/governance",
+    },
+    {
+      label: "Audit Tamper Console",
+      labelHi: "ऑडिट कंसोल",
+      href: "/admin/audit-tamper",
+    },
+    {
+      label: "Time-Travel Simulator",
+      labelHi: "समय-यात्रा",
+      href: "/admin/time-travel",
+    },
+  ],
+};
 
 export function TopBar() {
-  const {
-    t,
-    theme,
-    toggleTheme,
-    locale,
-    toggleLocale,
-    user,
-    logout,
-    loginWithApi,
-    setCommandPaletteOpen,
-  } = useApp();
+  const { t, locale, toggleLocale, user, logout, setCommandPaletteOpen } =
+    useApp();
   const router = useRouter();
-  const [showNotif, setShowNotif] = useState(false);
+  const pathname = usePathname();
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [storeState, setStoreState] = useState(() =>
-    getNotificationsSnapshot(),
-  );
-
-  useEffect(() => {
-    return subscribeNotificationsStore(() => {
-      setStoreState({ ...getNotificationsSnapshot() });
-    });
-  }, []);
 
   const currentRole: StatutoryRole = user?.role || "INSTITUTION";
-  const roleScopedNotifications = storeState.inApp.filter(
-    (item) => item.recipientRole === currentRole,
-  );
-  const unreadCount = roleScopedNotifications.filter((n) => !n.isRead).length;
+  const roleTabs = ROLE_TABS[currentRole] || [];
 
-  const handleQuickRoleSwitch = async (role: StatutoryRole) => {
-    const account = DEMO_ROLE_ACCOUNTS.find((a) => a.role === role);
-    if (!account) return;
-    await loginWithApi(account.email, account.password);
-    setShowUserMenu(false);
+  const isInstitution = currentRole === "INSTITUTION";
+  const isRegional = currentRole === "REGIONAL_OFFICER";
+
+  const displayName =
+    user?.fullName ||
+    (isInstitution
+      ? "Sahyadri Institute of Technology"
+      : isRegional
+        ? "Western Regional Office"
+        : "Authorized Statutory Officer");
+
+  const displaySubtitle = isInstitution
+    ? "Institution Desk (ID: 1-DEMO-4102)"
+    : isRegional
+      ? "WRO Statutory Desk (Mumbai)"
+      : `${currentRole} Desk`;
+
+  const initials = isInstitution
+    ? "SI"
+    : isRegional
+      ? "RO"
+      : displayName.slice(0, 2).toUpperCase() || "AI";
+
+  const handleSignOut = () => {
+    logout();
+    router.push("/login?reason=session_terminated");
   };
 
   return (
-    <div className="shrink-0">
-      {/* Visible Demo Clock Active Banner */}
-      {storeState.demoClock.isActive && (
-        <div
-          role="status"
-          aria-live="polite"
-          data-testid="demo-clock-banner"
-          className="flex items-center justify-between gap-2 border-b border-border bg-brand px-4 py-1 text-[11px] font-semibold text-brand-on"
-        >
-          <span className="flex items-center gap-1.5 truncate">
-            <Clock className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-            <span>
-              {locale === "hi"
-                ? storeState.demoClock.bannerTextHi
-                : storeState.demoClock.bannerTextEn}
-            </span>
-          </span>
+    <div
+      className="sticky top-0 z-50 w-full shrink-0 border-b border-[#E5E0D8] bg-white shadow-xs"
+      style={{ backgroundColor: "#ffffff" }}
+    >
+      {/* Top Header Bar */}
+      <header
+        className="flex h-16 items-center justify-between gap-4 px-6 lg:px-8 border-b border-[#F0ECE6] bg-white"
+        style={{ backgroundColor: "#ffffff" }}
+      >
+        {/* Brand & AICTE Emblem */}
+        <div className="flex items-center gap-3 shrink-0">
           <Link
-            href="/notifications"
-            className="shrink-0 rounded-xs border border-brand-on/40 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-on hover:bg-brand-hover"
+            href="/"
+            className="flex items-center gap-3 transition-opacity hover:opacity-90"
+            aria-label="SAMAY Home"
           >
-            {locale === "hi" ? "वृद्धि लॉग देखें" : "Inspect Escalation Ladder"}
+            <div className="flex h-10 w-10 flex-col items-center justify-center rounded border border-[#E5E0D8] bg-[#FAFAFA] text-center shadow-2xs">
+              <span className="text-[9px] font-bold tracking-tight text-[#2A1810] leading-none">
+                AICTE
+              </span>
+              <span className="text-[7px] font-semibold tracking-tight text-[#EC642A] leading-none mt-0.5">
+                SAMAY
+              </span>
+            </div>
+
+            <div>
+              <div className="font-serif text-lg font-bold tracking-tight text-[#2A1810] leading-tight">
+                SAMAY
+              </div>
+              <div className="text-[11px] text-[#736357] leading-tight font-medium">
+                Smart AICTE Monitoring &amp; Approval Yojana
+              </div>
+            </div>
           </Link>
         </div>
-      )}
 
-      <header className="flex h-shell-topbar shrink-0 items-center justify-between gap-3 border-b border-border bg-surface-raised px-4">
-        {/* Search / Command Palette Trigger */}
-        <button
-          type="button"
-          onClick={() => setCommandPaletteOpen(true)}
-          aria-label={`${t.searchPlaceholder} (${t.commandPaletteHint})`}
-          className="flex h-8 w-full max-w-md items-center justify-between gap-2 rounded-xs border border-border bg-surface px-3 text-xs text-text-muted hover:border-brand"
-        >
-          <span className="flex items-center gap-2 truncate">
-            <Search
-              className="h-3.5 w-3.5 shrink-0 text-text-muted"
-              aria-hidden="true"
-            />
-            <span className="truncate">{t.searchPlaceholder}</span>
-          </span>
-          <kbd className="tabular-nums-data shrink-0 rounded-xs border border-border bg-surface-sunken px-1.5 py-0.5 text-[10px] font-semibold text-text-primary">
-            {t.commandPaletteHint}
-          </kbd>
-        </button>
+        {/* Global Search / Command Palette Trigger (Centered Omnibox) */}
+        <div className="flex flex-1 max-w-md items-center justify-center">
+          <button
+            type="button"
+            onClick={() => setCommandPaletteOpen(true)}
+            aria-label={`${t.searchPlaceholder} (${t.commandPaletteHint})`}
+            className="flex h-9 w-full items-center justify-between gap-2 rounded-md border border-[#E5E0D8] bg-[#FAFAFA] px-3.5 text-xs text-[#736357] hover:border-[#EC642A]/60 hover:bg-white transition-colors"
+          >
+            <span className="flex items-center gap-2 truncate">
+              <Search
+                className="h-3.5 w-3.5 shrink-0 text-[#8C7E75]"
+                aria-hidden="true"
+              />
+              <span className="truncate text-[#8C7E75]">
+                Search applications, institutions, clauses...
+              </span>
+            </span>
+            <kbd className="tabular-nums-data shrink-0 rounded border border-[#E5E0D8] bg-white px-1.5 py-0.5 text-[10px] font-semibold text-[#736357]">
+              Ctrl+K
+            </kbd>
+          </button>
+        </div>
 
         {/* Right Utility Controls */}
-        <div className="flex items-center gap-2">
-          {/* Bilingual Toggle (EN / हिन्दी) */}
+        <div className="flex items-center gap-5 shrink-0">
+          {/* Language Toggle: English / हिंदी */}
           <button
             type="button"
             onClick={toggleLocale}
-            aria-label={`Switch language to ${t.languageToggleLabel}`}
-            data-testid="locale-toggle-btn"
-            className="inline-flex h-8 items-center gap-1.5 rounded-xs border border-border bg-surface px-2.5 text-xs font-semibold text-text-primary hover:border-brand"
+            suppressHydrationWarning
+            className="text-xs transition-colors cursor-pointer select-none"
+            aria-label="Toggle Language"
           >
-            <Languages className="h-3.5 w-3.5 text-brand" aria-hidden="true" />
-            <span>{locale === "en" ? "हिन्दी" : "English"}</span>
+            <span
+              className={cn(
+                locale === "en"
+                  ? "font-bold text-[#EC642A]"
+                  : "text-[#736357] font-medium",
+              )}
+            >
+              English
+            </span>
+            <span className="text-[#A89D95] mx-1">/</span>
+            <span
+              className={cn(
+                locale === "hi"
+                  ? "font-bold text-[#EC642A]"
+                  : "text-[#736357] font-medium",
+              )}
+            >
+              हिंदी
+            </span>
           </button>
 
-          {/* Light / Dark Theme Toggle */}
-          <button
-            type="button"
-            onClick={toggleTheme}
-            aria-label={`Switch to ${theme === "light" ? "Dark" : "Light"} theme`}
-            data-testid="theme-toggle-btn"
-            className="inline-flex h-8 items-center gap-1.5 rounded-xs border border-border bg-surface px-2.5 text-xs font-medium text-text-primary hover:border-brand"
+          {/* Clean Notification Bell Icon */}
+          <Link
+            href="/notifications"
+            aria-label="Notifications"
+            className="relative p-1 text-[#2A1810] hover:text-[#EC642A] transition-colors"
           >
-            {theme === "light" ? (
-              <>
-                <Moon className="h-3.5 w-3.5 text-brand" aria-hidden="true" />
-                <span className="hidden sm:inline">{t.themeDark}</span>
-              </>
-            ) : (
-              <>
-                <Sun className="h-3.5 w-3.5 text-brand" aria-hidden="true" />
-                <span className="hidden sm:inline">{t.themeLight}</span>
-              </>
-            )}
-          </button>
+            <Bell className="h-4 w-4 stroke-[1.75]" />
+          </Link>
 
-          {/* Notification Bell Dropdown */}
+          {/* User Profile Chip (Clean, Professional, No Mock Leaks) */}
           <div className="relative">
             <button
               type="button"
-              onClick={() => {
-                setShowNotif((prev) => !prev);
-                setShowUserMenu(false);
-              }}
-              aria-label={`${t.notifications} (${unreadCount} unread)`}
-              aria-expanded={showNotif}
-              data-testid="notification-bell-btn"
-              className="relative inline-flex h-8 w-8 items-center justify-center rounded-xs border border-border bg-surface text-text-primary hover:border-brand"
+              onClick={() => setShowUserMenu((prev) => !prev)}
+              aria-expanded={showUserMenu}
+              className="flex items-center gap-2.5 text-left rounded-md p-1 hover:bg-[#F5F2EB] transition-colors"
             >
-              <Bell className="h-4 w-4" aria-hidden="true" />
-              {unreadCount > 0 && (
-                <span
-                  data-testid="notification-unread-badge"
-                  className="tabular-nums-data absolute -right-1 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-xs border border-surface bg-sla-overdue px-1 text-[10px] font-bold text-brand-on"
-                >
-                  {unreadCount}
-                </span>
-              )}
-            </button>
-
-            {showNotif && (
-              <div
-                role="region"
-                aria-label={t.notifications}
-                className="absolute right-0 z-40 mt-1.5 w-96 rounded-sm border border-border bg-surface-raised shadow-overlay"
-              >
-                <div className="flex items-center justify-between border-b border-border bg-surface-sunken px-3 py-2">
-                  <div>
-                    <span className="font-serif text-xs font-bold text-text-primary">
-                      {t.notifications} ({currentRole})
-                    </span>
-                    <span className="ml-2 rounded-xs border border-border bg-surface px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase text-brand">
-                      SSE LIVE
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => markAllNotificationsRead(currentRole)}
-                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand hover:underline"
-                  >
-                    <CheckCheck className="h-3 w-3" aria-hidden="true" />
-                    <span>{t.markAllRead}</span>
-                  </button>
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#EFECE6] border border-[#E0DBD3] text-xs font-bold text-[#2A1810]">
+                {initials}
+              </div>
+              <div className="hidden sm:block leading-tight">
+                <div className="text-xs font-bold text-[#2A1810] max-w-[170px] truncate">
+                  {displayName}
                 </div>
-
-                <ul className="max-h-80 divide-y divide-border overflow-y-auto">
-                  {roleScopedNotifications.length === 0 ? (
-                    <li className="p-4 text-center text-xs text-text-muted">
-                      No in-app notifications for role {currentRole}.
-                    </li>
-                  ) : (
-                    roleScopedNotifications.map((item) => (
-                      <li
-                        key={item.id}
-                        className={`p-3 text-xs space-y-1.5 transition-colors ${
-                          item.isRead ? "bg-surface-raised opacity-75" : "bg-surface"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="inline-flex items-center gap-1.5">
-                            <span className="rounded-xs border border-brand bg-brand px-1.5 py-0.5 font-mono text-[10px] font-bold text-brand-on">
-                              L{item.escalationLevel}
-                            </span>
-                            <span className="rounded-xs border border-border bg-surface-sunken px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase text-text-muted">
-                              ADVISORY
-                            </span>
-                          </span>
-                          <span className="tabular-nums-data text-[10px] text-text-muted">
-                            {item.createdAt.slice(0, 10)}
-                          </span>
-                        </div>
-                        <p className="font-semibold text-text-primary leading-snug">
-                          {locale === "hi" ? item.titleHi : item.titleEn}
-                        </p>
-                        <p className="text-[11px] text-text-muted line-clamp-2">
-                          {locale === "hi" ? item.bodyHi : item.bodyEn}
-                        </p>
-                        <div className="flex items-center justify-between pt-1">
-                          <Link
-                            href={item.actionLink}
-                            onClick={() => {
-                              markNotificationRead(item.id);
-                              setShowNotif(false);
-                            }}
-                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand hover:underline"
-                          >
-                            <span>
-                              {locale === "hi"
-                                ? "आवेदन खोलें"
-                                : "Open Dossier"}
-                            </span>
-                            <ExternalLink
-                              className="h-3 w-3"
-                              aria-hidden="true"
-                            />
-                          </Link>
-                          {!item.isRead && (
-                            <button
-                              type="button"
-                              onClick={() => markNotificationRead(item.id)}
-                              className="text-[10px] font-medium text-text-muted hover:text-text-primary"
-                            >
-                              {locale === "hi" ? "पढ़ा हुआ चिह्नित करें" : "Mark read"}
-                            </button>
-                          )}
-                        </div>
-                      </li>
-                    ))
-                  )}
-                </ul>
-
-                <div className="flex items-center justify-between border-t border-border bg-surface-sunken px-3 py-2 text-[11px]">
-                  <Link
-                    href="/notifications"
-                    onClick={() => setShowNotif(false)}
-                    className="font-semibold text-brand hover:underline"
-                  >
-                    {locale === "hi"
-                      ? "सूचना केंद्र और मेलपिट इनबॉक्स →"
-                      : "Notification Centre & Mailpit →"}
-                  </Link>
-                  <Link
-                    href="/admin/notifications"
-                    onClick={() => setShowNotif(false)}
-                    className="inline-flex items-center gap-1 font-medium text-text-muted hover:text-text-primary"
-                  >
-                    <SlidersHorizontal className="h-3 w-3" aria-hidden="true" />
-                    <span>{locale === "hi" ? "नीतियां" : "Policies"}</span>
-                  </Link>
+                <div className="text-[10px] text-[#736357]">
+                  {displaySubtitle}
                 </div>
               </div>
-            )}
-          </div>
-
-          {/* User Menu */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => {
-                setShowUserMenu((prev) => !prev);
-                setShowNotif(false);
-              }}
-              aria-expanded={showUserMenu}
-              aria-label="Authenticated User Menu"
-              data-testid="user-menu-btn"
-              className="inline-flex h-8 items-center gap-2 rounded-xs border border-border bg-surface px-2.5 text-xs text-text-primary hover:border-brand"
-            >
-              <UserCheck className="h-3.5 w-3.5 text-brand" aria-hidden="true" />
-              <span className="max-w-[140px] truncate font-semibold">
-                {user?.fullName || "Dr. Arvind Kulkarni"}
-              </span>
-              <span className="tabular-nums-data hidden rounded-xs border border-border bg-surface-sunken px-1.5 py-0.5 text-[10px] font-semibold text-text-muted md:inline">
-                {user?.role || "INSTITUTION"}
-              </span>
-              <ChevronDown
-                className="h-3 w-3 text-text-muted"
-                aria-hidden="true"
-              />
             </button>
 
+            {/* User Dropdown */}
             {showUserMenu && (
               <div
                 role="menu"
-                className="absolute right-0 z-40 mt-1.5 w-72 rounded-sm border border-border bg-surface-raised p-2 shadow-overlay"
+                className="absolute right-0 top-full mt-2 w-64 rounded-md border border-[#E5E0D8] bg-white p-3 shadow-lg z-50 space-y-3"
               >
-                <div className="border-b border-border px-2.5 py-2">
-                  <div className="font-serif text-xs font-bold text-text-primary">
-                    {user?.fullName}
+                <div className="border-b border-[#E5E0D8] pb-2">
+                  <div className="font-bold text-xs text-[#2A1810] truncate">
+                    {displayName}
                   </div>
-                  <div className="tabular-nums-data text-[11px] text-text-muted">
-                    {user?.email}
+                  <div className="text-[11px] text-[#736357] truncate">
+                    {user?.email || "officer@aicte.gov.in"}
                   </div>
-                  <div className="mt-1 inline-block rounded-xs border border-border bg-surface-sunken px-1.5 py-0.5 font-mono text-[10px] font-semibold text-brand">
-                    ROLE: {user?.role}
+                  <div className="mt-1.5 inline-flex items-center gap-1 rounded bg-[#EC642A]/10 px-2 py-0.5 text-[10px] font-bold text-[#EC642A]">
+                    <Shield className="h-3 w-3" />
+                    <span>Role: {currentRole}</span>
                   </div>
                 </div>
 
-                <div className="border-b border-border py-1.5">
-                  <div className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-text-muted">
-                    Switch Statutory Role Session
-                  </div>
-                  {DEMO_ROLE_ACCOUNTS.map((acct) => (
-                    <button
-                      key={acct.role}
-                      type="button"
-                      onClick={() => handleQuickRoleSwitch(acct.role)}
-                      className="flex w-full items-center justify-between rounded-xs px-2.5 py-1.5 text-left text-xs text-text-primary hover:bg-surface-sunken"
-                    >
-                      <span>{locale === "hi" ? acct.labelHi : acct.label}</span>
-                      <span className="tabular-nums-data text-[10px] text-text-muted">
-                        {acct.regionBadge}
-                      </span>
-                    </button>
-                  ))}
+                <div className="space-y-1 text-xs">
+                  <Link
+                    href="/institution/workspace"
+                    onClick={() => setShowUserMenu(false)}
+                    className="flex items-center gap-2 rounded px-2 py-1.5 text-[#2A1810] hover:bg-[#FAFAFA]"
+                  >
+                    <User className="h-3.5 w-3.5 text-[#736357]" />
+                    <span>Statutory Workspace</span>
+                  </Link>
+                  <Link
+                    href="/notifications"
+                    onClick={() => setShowUserMenu(false)}
+                    className="flex items-center gap-2 rounded px-2 py-1.5 text-[#2A1810] hover:bg-[#FAFAFA]"
+                  >
+                    <Bell className="h-3.5 w-3.5 text-[#736357]" />
+                    <span>Regulatory Notices</span>
+                  </Link>
                 </div>
 
-                <div className="pt-1.5">
+                <div className="border-t border-[#E5E0D8] pt-2">
                   <button
                     type="button"
-                    onClick={() => {
-                      logout();
-                      setShowUserMenu(false);
-                      router.push("/login");
-                    }}
-                    className="flex w-full items-center gap-2 rounded-xs px-2.5 py-1.5 text-left text-xs font-semibold text-sla-overdue hover:bg-surface-sunken"
+                    onClick={handleSignOut}
+                    className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
                   >
-                    <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
-                    <span>{t.signOut}</span>
+                    <LogOut className="h-3.5 w-3.5" />
+                    <span>Sign Out from Portal</span>
                   </button>
                 </div>
               </div>
@@ -365,6 +329,35 @@ export function TopBar() {
           </div>
         </div>
       </header>
+
+      {/* Horizontal Role-Scoped Navigation Bar (Clean wrap layout, no horizontal scrolling) */}
+      <nav
+        aria-label="Role Statutory Navigation"
+        className="w-full bg-white border-t border-[#F5F2EB] px-6 lg:px-8 py-1 overflow-x-hidden"
+        style={{ backgroundColor: "#ffffff" }}
+      >
+        <div className="flex flex-wrap items-center gap-x-6 sm:gap-x-8 gap-y-2">
+          {roleTabs.map((tab) => {
+            const isActive =
+              pathname === tab.href ||
+              (tab.href !== "/" && pathname?.startsWith(tab.href));
+            return (
+              <Link
+                key={tab.href}
+                href={tab.href}
+                className={cn(
+                  "py-2.5 text-xs sm:text-sm transition-all border-b-2 -mb-[1px] whitespace-nowrap",
+                  isActive
+                    ? "font-semibold text-[#EC642A] border-[#EC642A]"
+                    : "font-medium text-[#5C4D44] border-transparent hover:text-[#EC642A]",
+                )}
+              >
+                <span>{locale === "hi" ? tab.labelHi : tab.label}</span>
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
     </div>
   );
 }

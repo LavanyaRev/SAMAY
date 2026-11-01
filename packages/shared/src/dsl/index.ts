@@ -1,5 +1,5 @@
-import { z } from 'zod';
-import { ApplicationStatus, UserRole, WorkflowStage } from '../types/index.js';
+import { z } from "zod";
+import { ApplicationStatus, UserRole, WorkflowStage } from "../types/index.js";
 
 /**
  * ============================================================================
@@ -10,7 +10,7 @@ import { ApplicationStatus, UserRole, WorkflowStage } from '../types/index.js';
  * // TODO(APH-VERIFY): Verify exact clause reference, timeline, and fee schedule against AICTE Approval Process Handbook (APH 2024-27).
  */
 
-export const BallWithSchema = z.enum(['AICTE', 'INSTITUTION']);
+export const BallWithSchema = z.enum(["AICTE", "INSTITUTION"]);
 export type BallWith = z.infer<typeof BallWithSchema>;
 
 export const PipelineStageSchema = z.object({
@@ -49,7 +49,12 @@ export type PipelineReturnRule = z.infer<typeof PipelineReturnRuleSchema>;
 export const PipelineMetadataSchema = z.object({
   // TODO(APH-VERIFY): Verify exact clause reference, timeline, and fee schedule against AICTE Approval Process Handbook (APH 2024-27).
   aph_edition: z.string().min(1),
-  version: z.string().regex(/^\d+\.\d+(\.\d+)?$/, 'Version must follow SemVer format e.g. 1.0.0'),
+  version: z
+    .string()
+    .regex(
+      /^\d+\.\d+(\.\d+)?$/,
+      "Version must follow SemVer format e.g. 1.0.0",
+    ),
   effective_from: z.string().min(1),
 });
 
@@ -97,7 +102,9 @@ export function validatePipelineGraph(
 
   const startStageId = dsl.initial_stage ?? dsl.stages[0]?.id;
   if (!startStageId || !stageIds.has(startStageId)) {
-    errors.push(`Initial stage "${startStageId ?? 'undefined'}" does not exist in stages[]`);
+    errors.push(
+      `Initial stage "${startStageId ?? "undefined"}" does not exist in stages[]`,
+    );
   }
 
   const adjacency = new Map<string, Set<string>>();
@@ -107,16 +114,20 @@ export function validatePipelineGraph(
 
   for (const t of dsl.transitions) {
     if (!stageIds.has(t.from)) {
-      errors.push(`Transition "${t.action}" references unknown 'from' stage "${t.from}"`);
+      errors.push(
+        `Transition "${t.action}" references unknown 'from' stage "${t.from}"`,
+      );
     }
     if (!stageIds.has(t.to)) {
-      errors.push(`Transition "${t.action}" references unknown 'to' stage "${t.to}"`);
+      errors.push(
+        `Transition "${t.action}" references unknown 'to' stage "${t.to}"`,
+      );
     }
     if (stageIds.has(t.from) && stageIds.has(t.to)) {
       adjacency.get(t.from)!.add(t.to);
     }
     // Regulatory Safeguard (AGENTS.md Section 2.3): No Autonomous Approvals
-    if (t.auto && t.to.toUpperCase() === 'APPROVED') {
+    if (t.auto && t.to.toUpperCase() === "APPROVED") {
       errors.push(
         `Regulatory violation: Transition from "${t.from}" to "APPROVED" cannot have auto=true (Human Supremacy Mandate)`,
       );
@@ -125,7 +136,9 @@ export function validatePipelineGraph(
 
   for (const rr of dsl.return_rules) {
     if (!stageIds.has(rr.from_stage)) {
-      errors.push(`Return rule references unknown 'from_stage' "${rr.from_stage}"`);
+      errors.push(
+        `Return rule references unknown 'from_stage' "${rr.from_stage}"`,
+      );
     }
     if (!stageIds.has(rr.to_stage)) {
       errors.push(`Return rule references unknown 'to_stage' "${rr.to_stage}"`);
@@ -160,7 +173,7 @@ export function validatePipelineGraph(
   }
 
   if (unreachableStages.length > 0) {
-    errors.push(`Unreachable stages detected: ${unreachableStages.join(', ')}`);
+    errors.push(`Unreachable stages detected: ${unreachableStages.join(", ")}`);
   }
 
   // Terminal states: stages with no outgoing edges (in transitions or return_rules)
@@ -172,9 +185,11 @@ export function validatePipelineGraph(
     }
   }
 
-  const reachableTerminalStages = terminalStages.filter((id) => visited.has(id));
+  const reachableTerminalStages = terminalStages.filter((id) =>
+    visited.has(id),
+  );
   if (terminalStages.length === 0 || reachableTerminalStages.length === 0) {
-    errors.push('Pipeline graph is missing reachable terminal states');
+    errors.push("Pipeline graph is missing reachable terminal states");
   }
 
   return {
@@ -185,17 +200,19 @@ export function validatePipelineGraph(
   };
 }
 
-export const PipelineDslSchema = BasePipelineDslSchema.superRefine((dsl, ctx) => {
-  const result = validatePipelineGraph(dsl);
-  if (!result.valid) {
-    for (const err of result.errors) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: err,
-      });
+export const PipelineDslSchema = BasePipelineDslSchema.superRefine(
+  (dsl, ctx) => {
+    const result = validatePipelineGraph(dsl);
+    if (!result.valid) {
+      for (const err of result.errors) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: err,
+        });
+      }
     }
-  }
-});
+  },
+);
 
 export type PipelineDsl = z.infer<typeof PipelineDslSchema>;
 
@@ -206,99 +223,99 @@ export type PipelineDsl = z.infer<typeof PipelineDslSchema>;
  * // TODO(APH-VERIFY): Verify exact clause reference, timeline, and fee schedule against AICTE Approval Process Handbook (APH 2024-27).
  */
 export const ONLY_SCRUTINY_PIPELINE_V1: PipelineDsl = PipelineDslSchema.parse({
-  code: 'ONLY_SCRUTINY',
-  name: 'Statutory Scrutiny-Only Approval Pipeline (Placeholder)',
+  code: "ONLY_SCRUTINY",
+  name: "Statutory Scrutiny-Only Approval Pipeline (Placeholder)",
   description:
-    'Placeholder pipeline for applications evaluated solely via Scrutiny Committee without EVC inspection.',
-  initial_stage: 'DRAFT',
+    "Placeholder pipeline for applications evaluated solely via Scrutiny Committee without EVC inspection.",
+  initial_stage: "DRAFT",
   // TODO(APH-VERIFY): Verify exact clause reference, timeline, and fee schedule against AICTE Approval Process Handbook (APH 2024-27).
   stages: [
     {
-      id: 'DRAFT',
-      label: 'Application Draft Preparation (Placeholder)',
+      id: "DRAFT",
+      label: "Application Draft Preparation (Placeholder)",
       owner_role: UserRole.INSTITUTION,
       timeline_working_days: 15,
-      ball_with: 'INSTITUTION',
+      ball_with: "INSTITUTION",
       requires_evc: false,
       requires_committee: false,
     },
     {
-      id: 'SUBMITTED',
-      label: 'Application Submitted & Regional Intake (Placeholder)',
+      id: "SUBMITTED",
+      label: "Application Submitted & Regional Intake (Placeholder)",
       owner_role: UserRole.REGIONAL_OFFICER,
       timeline_working_days: 2,
-      ball_with: 'AICTE',
+      ball_with: "AICTE",
       requires_evc: false,
       requires_committee: false,
     },
     {
-      id: 'SCRUTINY',
-      label: 'Scrutiny Committee Verification (Placeholder)',
+      id: "SCRUTINY",
+      label: "Scrutiny Committee Verification (Placeholder)",
       owner_role: UserRole.COMMITTEE_MEMBER,
       timeline_working_days: 7,
-      ball_with: 'AICTE',
+      ball_with: "AICTE",
       requires_evc: false,
       requires_committee: true,
     },
     {
-      id: 'DEFICIENCY_RECTIFICATION',
-      label: 'Institution Deficiency Compliance (Placeholder)',
+      id: "DEFICIENCY_RECTIFICATION",
+      label: "Institution Deficiency Compliance (Placeholder)",
       owner_role: UserRole.INSTITUTION,
       timeline_working_days: 10,
-      ball_with: 'INSTITUTION',
+      ball_with: "INSTITUTION",
       requires_evc: false,
       requires_committee: false,
     },
     {
-      id: 'BUREAU_REVIEW',
-      label: 'Approval Bureau Competent Authority Review (Placeholder)',
+      id: "BUREAU_REVIEW",
+      label: "Approval Bureau Competent Authority Review (Placeholder)",
       owner_role: UserRole.BUREAU_OFFICER,
       timeline_working_days: 5,
-      ball_with: 'AICTE',
+      ball_with: "AICTE",
       requires_evc: false,
       requires_committee: false,
     },
     {
-      id: 'APPROVED',
-      label: 'Approval Granted by Competent Authority (Placeholder)',
+      id: "APPROVED",
+      label: "Approval Granted by Competent Authority (Placeholder)",
       owner_role: UserRole.BUREAU_OFFICER,
       timeline_working_days: 0,
-      ball_with: 'AICTE',
+      ball_with: "AICTE",
       requires_evc: false,
       requires_committee: false,
     },
     {
-      id: 'REJECTED',
-      label: 'Application Rejected by Competent Authority (Placeholder)',
+      id: "REJECTED",
+      label: "Application Rejected by Competent Authority (Placeholder)",
       owner_role: UserRole.BUREAU_OFFICER,
       timeline_working_days: 0,
-      ball_with: 'AICTE',
+      ball_with: "AICTE",
       requires_evc: false,
       requires_committee: false,
     },
     {
-      id: 'WITHDRAWN',
-      label: 'Application Withdrawn by Institution (Placeholder)',
+      id: "WITHDRAWN",
+      label: "Application Withdrawn by Institution (Placeholder)",
       owner_role: UserRole.INSTITUTION,
       timeline_working_days: 0,
-      ball_with: 'INSTITUTION',
+      ball_with: "INSTITUTION",
       requires_evc: false,
       requires_committee: false,
     },
   ],
   transitions: [
     {
-      from: 'DRAFT',
-      to: 'SUBMITTED',
-      action: 'submit',
+      from: "DRAFT",
+      to: "SUBMITTED",
+      action: "submit",
       allowed_roles: [UserRole.INSTITUTION, UserRole.ADMIN],
       requires_reason: false,
       auto: false,
     },
     {
-      from: 'SUBMITTED',
-      to: 'SCRUTINY',
-      action: 'auto_allocate_scrutiny',
+      from: "SUBMITTED",
+      to: "SCRUTINY",
+      action: "auto_allocate_scrutiny",
       allowed_roles: [
         UserRole.REGIONAL_OFFICER,
         UserRole.BUREAU_OFFICER,
@@ -309,17 +326,21 @@ export const ONLY_SCRUTINY_PIPELINE_V1: PipelineDsl = PipelineDslSchema.parse({
       auto: true,
     },
     {
-      from: 'SUBMITTED',
-      to: 'SCRUTINY',
-      action: 'advance',
-      allowed_roles: [UserRole.REGIONAL_OFFICER, UserRole.BUREAU_OFFICER, UserRole.ADMIN],
+      from: "SUBMITTED",
+      to: "SCRUTINY",
+      action: "advance",
+      allowed_roles: [
+        UserRole.REGIONAL_OFFICER,
+        UserRole.BUREAU_OFFICER,
+        UserRole.ADMIN,
+      ],
       requires_reason: false,
       auto: false,
     },
     {
-      from: 'SCRUTINY',
-      to: 'BUREAU_REVIEW',
-      action: 'auto_forward_bureau',
+      from: "SCRUTINY",
+      to: "BUREAU_REVIEW",
+      action: "auto_forward_bureau",
       allowed_roles: [
         UserRole.COMMITTEE_MEMBER,
         UserRole.REGIONAL_OFFICER,
@@ -330,89 +351,101 @@ export const ONLY_SCRUTINY_PIPELINE_V1: PipelineDsl = PipelineDslSchema.parse({
       auto: true,
     },
     {
-      from: 'SCRUTINY',
-      to: 'BUREAU_REVIEW',
-      action: 'advance',
-      allowed_roles: [UserRole.COMMITTEE_MEMBER, UserRole.REGIONAL_OFFICER, UserRole.ADMIN],
+      from: "SCRUTINY",
+      to: "BUREAU_REVIEW",
+      action: "advance",
+      allowed_roles: [
+        UserRole.COMMITTEE_MEMBER,
+        UserRole.REGIONAL_OFFICER,
+        UserRole.ADMIN,
+      ],
       requires_reason: false,
       auto: false,
     },
     {
-      from: 'SCRUTINY',
-      to: 'DEFICIENCY_RECTIFICATION',
-      action: 'return_for_deficiency',
-      allowed_roles: [UserRole.COMMITTEE_MEMBER, UserRole.REGIONAL_OFFICER, UserRole.ADMIN],
+      from: "SCRUTINY",
+      to: "DEFICIENCY_RECTIFICATION",
+      action: "return_for_deficiency",
+      allowed_roles: [
+        UserRole.COMMITTEE_MEMBER,
+        UserRole.REGIONAL_OFFICER,
+        UserRole.ADMIN,
+      ],
       requires_reason: true,
       auto: false,
     },
     {
-      from: 'DEFICIENCY_RECTIFICATION',
-      to: 'SCRUTINY',
-      action: 'submit',
+      from: "DEFICIENCY_RECTIFICATION",
+      to: "SCRUTINY",
+      action: "submit",
       allowed_roles: [UserRole.INSTITUTION, UserRole.ADMIN],
       requires_reason: true,
       auto: false,
     },
     {
-      from: 'DEFICIENCY_RECTIFICATION',
-      to: 'SCRUTINY',
-      action: 'advance',
-      allowed_roles: [UserRole.INSTITUTION, UserRole.REGIONAL_OFFICER, UserRole.ADMIN],
+      from: "DEFICIENCY_RECTIFICATION",
+      to: "SCRUTINY",
+      action: "advance",
+      allowed_roles: [
+        UserRole.INSTITUTION,
+        UserRole.REGIONAL_OFFICER,
+        UserRole.ADMIN,
+      ],
       requires_reason: true,
       auto: false,
     },
     {
-      from: 'BUREAU_REVIEW',
-      to: 'SCRUTINY',
-      action: 'revert',
+      from: "BUREAU_REVIEW",
+      to: "SCRUTINY",
+      action: "revert",
       allowed_roles: [UserRole.BUREAU_OFFICER, UserRole.ADMIN],
       requires_reason: true,
       auto: false,
     },
     {
-      from: 'BUREAU_REVIEW',
-      to: 'APPROVED',
-      action: 'advance',
+      from: "BUREAU_REVIEW",
+      to: "APPROVED",
+      action: "advance",
       allowed_roles: [UserRole.BUREAU_OFFICER, UserRole.ADMIN],
       requires_reason: true,
       auto: false,
     },
     {
-      from: 'BUREAU_REVIEW',
-      to: 'REJECTED',
-      action: 'reject',
+      from: "BUREAU_REVIEW",
+      to: "REJECTED",
+      action: "reject",
       allowed_roles: [UserRole.BUREAU_OFFICER, UserRole.ADMIN],
       requires_reason: true,
       auto: false,
     },
     {
-      from: 'DRAFT',
-      to: 'WITHDRAWN',
-      action: 'withdraw',
+      from: "DRAFT",
+      to: "WITHDRAWN",
+      action: "withdraw",
       allowed_roles: [UserRole.INSTITUTION, UserRole.ADMIN],
       requires_reason: true,
       auto: false,
     },
     {
-      from: 'SUBMITTED',
-      to: 'WITHDRAWN',
-      action: 'withdraw',
+      from: "SUBMITTED",
+      to: "WITHDRAWN",
+      action: "withdraw",
       allowed_roles: [UserRole.INSTITUTION, UserRole.ADMIN],
       requires_reason: true,
       auto: false,
     },
     {
-      from: 'SCRUTINY',
-      to: 'WITHDRAWN',
-      action: 'withdraw',
+      from: "SCRUTINY",
+      to: "WITHDRAWN",
+      action: "withdraw",
       allowed_roles: [UserRole.INSTITUTION, UserRole.ADMIN],
       requires_reason: true,
       auto: false,
     },
     {
-      from: 'DEFICIENCY_RECTIFICATION',
-      to: 'WITHDRAWN',
-      action: 'withdraw',
+      from: "DEFICIENCY_RECTIFICATION",
+      to: "WITHDRAWN",
+      action: "withdraw",
       allowed_roles: [UserRole.INSTITUTION, UserRole.ADMIN],
       requires_reason: true,
       auto: false,
@@ -420,25 +453,25 @@ export const ONLY_SCRUTINY_PIPELINE_V1: PipelineDsl = PipelineDslSchema.parse({
   ],
   return_rules: [
     {
-      from_stage: 'SCRUTINY',
-      to_stage: 'DEFICIENCY_RECTIFICATION',
+      from_stage: "SCRUTINY",
+      to_stage: "DEFICIENCY_RECTIFICATION",
       // TODO(APH-VERIFY): Verify exact clause reference, timeline, and fee schedule against AICTE Approval Process Handbook (APH 2024-27).
       reason_codes: [
-        'DEF_LAND_DOCS_INCOMPLETE',
-        'DEF_FACULTY_CADRE_SHORTFALL',
-        'DEF_FDR_ENCUMBRANCE_MISMATCH',
-        'DEF_FIRE_SAFETY_EXPIRED',
-        'DEF_AFFIDAVIT_FORMAT_INVALID',
+        "DEF_LAND_DOCS_INCOMPLETE",
+        "DEF_FACULTY_CADRE_SHORTFALL",
+        "DEF_FDR_ENCUMBRANCE_MISMATCH",
+        "DEF_FIRE_SAFETY_EXPIRED",
+        "DEF_AFFIDAVIT_FORMAT_INVALID",
       ],
       requires_reason: true,
     },
   ],
-  escalation_policy_ref: 'ESC_POLICY_STANDARD_SCRUTINY_TODO_APH_VERIFY',
+  escalation_policy_ref: "ESC_POLICY_STANDARD_SCRUTINY_TODO_APH_VERIFY",
   metadata: {
     // TODO(APH-VERIFY): Verify exact clause reference, timeline, and fee schedule against AICTE Approval Process Handbook (APH 2024-27).
-    aph_edition: 'APH-2024-27-TODO(APH-VERIFY)',
-    version: '1.0.0',
-    effective_from: '2026-04-01T00:00:00.000Z',
+    aph_edition: "APH-2024-27-TODO(APH-VERIFY)",
+    version: "1.0.0",
+    effective_from: "2026-04-01T00:00:00.000Z",
   },
 });
 
@@ -449,117 +482,119 @@ export const ONLY_SCRUTINY_PIPELINE_V1: PipelineDsl = PipelineDslSchema.parse({
  * // TODO(APH-VERIFY): Verify exact clause reference, timeline, and fee schedule against AICTE Approval Process Handbook (APH 2024-27).
  */
 export const SCRUTINY_EVC_PIPELINE_V1: PipelineDsl = PipelineDslSchema.parse({
-  code: 'SCRUTINY_EVC',
-  name: 'Statutory Scrutiny & EVC Inspection Pipeline (Placeholder)',
+  code: "SCRUTINY_EVC",
+  name: "Statutory Scrutiny & EVC Inspection Pipeline (Placeholder)",
   description:
-    'Placeholder pipeline for New Institutions and major proposals requiring Scrutiny, EVC inspection, and optional SAC/SHC hearing.',
-  initial_stage: 'DRAFT',
+    "Placeholder pipeline for New Institutions and major proposals requiring Scrutiny, EVC inspection, and optional SAC/SHC hearing.",
+  initial_stage: "DRAFT",
   // TODO(APH-VERIFY): Verify exact clause reference, timeline, and fee schedule against AICTE Approval Process Handbook (APH 2024-27).
   stages: [
     {
-      id: 'DRAFT',
-      label: 'Application Draft Preparation (Placeholder)',
+      id: "DRAFT",
+      label: "Application Draft Preparation (Placeholder)",
       owner_role: UserRole.INSTITUTION,
       timeline_working_days: 15,
-      ball_with: 'INSTITUTION',
+      ball_with: "INSTITUTION",
       requires_evc: false,
       requires_committee: false,
     },
     {
-      id: 'SUBMITTED',
-      label: 'Application Submitted & Regional Intake (Placeholder)',
+      id: "SUBMITTED",
+      label: "Application Submitted & Regional Intake (Placeholder)",
       owner_role: UserRole.REGIONAL_OFFICER,
       timeline_working_days: 2,
-      ball_with: 'AICTE',
+      ball_with: "AICTE",
       requires_evc: false,
       requires_committee: false,
     },
     {
-      id: 'SCRUTINY',
-      label: 'Scrutiny Committee Verification (Placeholder)',
+      id: "SCRUTINY",
+      label: "Scrutiny Committee Verification (Placeholder)",
       owner_role: UserRole.COMMITTEE_MEMBER,
       timeline_working_days: 7,
-      ball_with: 'AICTE',
+      ball_with: "AICTE",
       requires_evc: false,
       requires_committee: true,
     },
     {
-      id: 'DEFICIENCY_RECTIFICATION',
-      label: 'Institution Deficiency Compliance (Placeholder)',
+      id: "DEFICIENCY_RECTIFICATION",
+      label: "Institution Deficiency Compliance (Placeholder)",
       owner_role: UserRole.INSTITUTION,
       timeline_working_days: 10,
-      ball_with: 'INSTITUTION',
+      ball_with: "INSTITUTION",
       requires_evc: false,
       requires_committee: false,
     },
     {
-      id: 'EVC',
-      label: 'Expert Visit Committee (EVC) Inspection (Placeholder)',
+      id: "EVC",
+      label: "Expert Visit Committee (EVC) Inspection (Placeholder)",
       owner_role: UserRole.COMMITTEE_MEMBER,
       timeline_working_days: 14,
-      ball_with: 'AICTE',
+      ball_with: "AICTE",
       requires_evc: true,
       requires_committee: true,
     },
     {
-      id: 'SAC_SHC',
-      label: 'Standing Appeal / Hearing Committee (SAC/SHC) Review (Placeholder)',
+      id: "SAC_SHC",
+      label:
+        "Standing Appeal / Hearing Committee (SAC/SHC) Review (Placeholder)",
       owner_role: UserRole.COMMITTEE_MEMBER,
       timeline_working_days: 10,
-      ball_with: 'AICTE',
+      ball_with: "AICTE",
       requires_evc: false,
       requires_committee: true,
     },
     {
-      id: 'BUREAU_REVIEW',
-      label: 'Approval Bureau Competent Authority Review (Placeholder)',
+      id: "BUREAU_REVIEW",
+      label: "Approval Bureau Competent Authority Review (Placeholder)",
       owner_role: UserRole.BUREAU_OFFICER,
       timeline_working_days: 5,
-      ball_with: 'AICTE',
+      ball_with: "AICTE",
       requires_evc: false,
       requires_committee: false,
     },
     {
-      id: 'APPROVED',
-      label: 'Letter of Approval (LoA) Issued by Competent Authority (Placeholder)',
+      id: "APPROVED",
+      label:
+        "Letter of Approval (LoA) Issued by Competent Authority (Placeholder)",
       owner_role: UserRole.BUREAU_OFFICER,
       timeline_working_days: 0,
-      ball_with: 'AICTE',
+      ball_with: "AICTE",
       requires_evc: false,
       requires_committee: false,
     },
     {
-      id: 'REJECTED',
-      label: 'Application Rejected by Competent Authority (Placeholder)',
+      id: "REJECTED",
+      label: "Application Rejected by Competent Authority (Placeholder)",
       owner_role: UserRole.BUREAU_OFFICER,
       timeline_working_days: 0,
-      ball_with: 'AICTE',
+      ball_with: "AICTE",
       requires_evc: false,
       requires_committee: false,
     },
     {
-      id: 'WITHDRAWN',
-      label: 'Application Withdrawn by Institution (Placeholder)',
+      id: "WITHDRAWN",
+      label: "Application Withdrawn by Institution (Placeholder)",
       owner_role: UserRole.INSTITUTION,
       timeline_working_days: 0,
-      ball_with: 'INSTITUTION',
+      ball_with: "INSTITUTION",
       requires_evc: false,
       requires_committee: false,
     },
   ],
   transitions: [
     {
-      from: 'DRAFT',
-      to: 'SUBMITTED',
-      action: 'submit',
+      from: "DRAFT",
+      to: "SUBMITTED",
+      action: "submit",
       allowed_roles: [UserRole.INSTITUTION, UserRole.ADMIN],
       requires_reason: false,
       auto: false,
     },
     {
-      from: 'SUBMITTED',
-      to: 'SCRUTINY',
-      action: 'auto_allocate_scrutiny',
+      from: "SUBMITTED",
+      to: "SCRUTINY",
+      action: "auto_allocate_scrutiny",
       allowed_roles: [
         UserRole.REGIONAL_OFFICER,
         UserRole.BUREAU_OFFICER,
@@ -570,17 +605,21 @@ export const SCRUTINY_EVC_PIPELINE_V1: PipelineDsl = PipelineDslSchema.parse({
       auto: true,
     },
     {
-      from: 'SUBMITTED',
-      to: 'SCRUTINY',
-      action: 'advance',
-      allowed_roles: [UserRole.REGIONAL_OFFICER, UserRole.BUREAU_OFFICER, UserRole.ADMIN],
+      from: "SUBMITTED",
+      to: "SCRUTINY",
+      action: "advance",
+      allowed_roles: [
+        UserRole.REGIONAL_OFFICER,
+        UserRole.BUREAU_OFFICER,
+        UserRole.ADMIN,
+      ],
       requires_reason: false,
       auto: false,
     },
     {
-      from: 'SCRUTINY',
-      to: 'EVC',
-      action: 'auto_schedule_evc',
+      from: "SCRUTINY",
+      to: "EVC",
+      action: "auto_schedule_evc",
       allowed_roles: [
         UserRole.COMMITTEE_MEMBER,
         UserRole.REGIONAL_OFFICER,
@@ -591,41 +630,53 @@ export const SCRUTINY_EVC_PIPELINE_V1: PipelineDsl = PipelineDslSchema.parse({
       auto: true,
     },
     {
-      from: 'SCRUTINY',
-      to: 'EVC',
-      action: 'advance',
-      allowed_roles: [UserRole.COMMITTEE_MEMBER, UserRole.REGIONAL_OFFICER, UserRole.ADMIN],
+      from: "SCRUTINY",
+      to: "EVC",
+      action: "advance",
+      allowed_roles: [
+        UserRole.COMMITTEE_MEMBER,
+        UserRole.REGIONAL_OFFICER,
+        UserRole.ADMIN,
+      ],
       requires_reason: false,
       auto: false,
     },
     {
-      from: 'SCRUTINY',
-      to: 'DEFICIENCY_RECTIFICATION',
-      action: 'return_for_deficiency',
-      allowed_roles: [UserRole.COMMITTEE_MEMBER, UserRole.REGIONAL_OFFICER, UserRole.ADMIN],
+      from: "SCRUTINY",
+      to: "DEFICIENCY_RECTIFICATION",
+      action: "return_for_deficiency",
+      allowed_roles: [
+        UserRole.COMMITTEE_MEMBER,
+        UserRole.REGIONAL_OFFICER,
+        UserRole.ADMIN,
+      ],
       requires_reason: true,
       auto: false,
     },
     {
-      from: 'DEFICIENCY_RECTIFICATION',
-      to: 'SCRUTINY',
-      action: 'submit',
+      from: "DEFICIENCY_RECTIFICATION",
+      to: "SCRUTINY",
+      action: "submit",
       allowed_roles: [UserRole.INSTITUTION, UserRole.ADMIN],
       requires_reason: true,
       auto: false,
     },
     {
-      from: 'DEFICIENCY_RECTIFICATION',
-      to: 'SCRUTINY',
-      action: 'advance',
-      allowed_roles: [UserRole.INSTITUTION, UserRole.REGIONAL_OFFICER, UserRole.ADMIN],
+      from: "DEFICIENCY_RECTIFICATION",
+      to: "SCRUTINY",
+      action: "advance",
+      allowed_roles: [
+        UserRole.INSTITUTION,
+        UserRole.REGIONAL_OFFICER,
+        UserRole.ADMIN,
+      ],
       requires_reason: true,
       auto: false,
     },
     {
-      from: 'EVC',
-      to: 'BUREAU_REVIEW',
-      action: 'auto_forward_evc_report',
+      from: "EVC",
+      to: "BUREAU_REVIEW",
+      action: "auto_forward_evc_report",
       allowed_roles: [
         UserRole.COMMITTEE_MEMBER,
         UserRole.REGIONAL_OFFICER,
@@ -636,25 +687,33 @@ export const SCRUTINY_EVC_PIPELINE_V1: PipelineDsl = PipelineDslSchema.parse({
       auto: true,
     },
     {
-      from: 'EVC',
-      to: 'BUREAU_REVIEW',
-      action: 'advance',
-      allowed_roles: [UserRole.COMMITTEE_MEMBER, UserRole.REGIONAL_OFFICER, UserRole.ADMIN],
+      from: "EVC",
+      to: "BUREAU_REVIEW",
+      action: "advance",
+      allowed_roles: [
+        UserRole.COMMITTEE_MEMBER,
+        UserRole.REGIONAL_OFFICER,
+        UserRole.ADMIN,
+      ],
       requires_reason: false,
       auto: false,
     },
     {
-      from: 'EVC',
-      to: 'SAC_SHC',
-      action: 'return_for_deficiency',
-      allowed_roles: [UserRole.COMMITTEE_MEMBER, UserRole.REGIONAL_OFFICER, UserRole.ADMIN],
+      from: "EVC",
+      to: "SAC_SHC",
+      action: "return_for_deficiency",
+      allowed_roles: [
+        UserRole.COMMITTEE_MEMBER,
+        UserRole.REGIONAL_OFFICER,
+        UserRole.ADMIN,
+      ],
       requires_reason: true,
       auto: false,
     },
     {
-      from: 'SAC_SHC',
-      to: 'BUREAU_REVIEW',
-      action: 'auto_forward_sac_recommendation',
+      from: "SAC_SHC",
+      to: "BUREAU_REVIEW",
+      action: "auto_forward_sac_recommendation",
       allowed_roles: [
         UserRole.COMMITTEE_MEMBER,
         UserRole.BUREAU_OFFICER,
@@ -664,89 +723,97 @@ export const SCRUTINY_EVC_PIPELINE_V1: PipelineDsl = PipelineDslSchema.parse({
       auto: true,
     },
     {
-      from: 'SAC_SHC',
-      to: 'BUREAU_REVIEW',
-      action: 'advance',
-      allowed_roles: [UserRole.COMMITTEE_MEMBER, UserRole.BUREAU_OFFICER, UserRole.ADMIN],
+      from: "SAC_SHC",
+      to: "BUREAU_REVIEW",
+      action: "advance",
+      allowed_roles: [
+        UserRole.COMMITTEE_MEMBER,
+        UserRole.BUREAU_OFFICER,
+        UserRole.ADMIN,
+      ],
       requires_reason: false,
       auto: false,
     },
     {
-      from: 'SAC_SHC',
-      to: 'EVC',
-      action: 'revert',
-      allowed_roles: [UserRole.COMMITTEE_MEMBER, UserRole.BUREAU_OFFICER, UserRole.ADMIN],
+      from: "SAC_SHC",
+      to: "EVC",
+      action: "revert",
+      allowed_roles: [
+        UserRole.COMMITTEE_MEMBER,
+        UserRole.BUREAU_OFFICER,
+        UserRole.ADMIN,
+      ],
       requires_reason: true,
       auto: false,
     },
     {
-      from: 'BUREAU_REVIEW',
-      to: 'EVC',
-      action: 'revert',
+      from: "BUREAU_REVIEW",
+      to: "EVC",
+      action: "revert",
       allowed_roles: [UserRole.BUREAU_OFFICER, UserRole.ADMIN],
       requires_reason: true,
       auto: false,
     },
     {
-      from: 'BUREAU_REVIEW',
-      to: 'APPROVED',
-      action: 'advance',
+      from: "BUREAU_REVIEW",
+      to: "APPROVED",
+      action: "advance",
       allowed_roles: [UserRole.BUREAU_OFFICER, UserRole.ADMIN],
       requires_reason: true,
       auto: false,
     },
     {
-      from: 'BUREAU_REVIEW',
-      to: 'REJECTED',
-      action: 'reject',
+      from: "BUREAU_REVIEW",
+      to: "REJECTED",
+      action: "reject",
       allowed_roles: [UserRole.BUREAU_OFFICER, UserRole.ADMIN],
       requires_reason: true,
       auto: false,
     },
     {
-      from: 'DRAFT',
-      to: 'WITHDRAWN',
-      action: 'withdraw',
+      from: "DRAFT",
+      to: "WITHDRAWN",
+      action: "withdraw",
       allowed_roles: [UserRole.INSTITUTION, UserRole.ADMIN],
       requires_reason: true,
       auto: false,
     },
     {
-      from: 'SUBMITTED',
-      to: 'WITHDRAWN',
-      action: 'withdraw',
+      from: "SUBMITTED",
+      to: "WITHDRAWN",
+      action: "withdraw",
       allowed_roles: [UserRole.INSTITUTION, UserRole.ADMIN],
       requires_reason: true,
       auto: false,
     },
     {
-      from: 'SCRUTINY',
-      to: 'WITHDRAWN',
-      action: 'withdraw',
+      from: "SCRUTINY",
+      to: "WITHDRAWN",
+      action: "withdraw",
       allowed_roles: [UserRole.INSTITUTION, UserRole.ADMIN],
       requires_reason: true,
       auto: false,
     },
     {
-      from: 'DEFICIENCY_RECTIFICATION',
-      to: 'WITHDRAWN',
-      action: 'withdraw',
+      from: "DEFICIENCY_RECTIFICATION",
+      to: "WITHDRAWN",
+      action: "withdraw",
       allowed_roles: [UserRole.INSTITUTION, UserRole.ADMIN],
       requires_reason: true,
       auto: false,
     },
     {
-      from: 'EVC',
-      to: 'WITHDRAWN',
-      action: 'withdraw',
+      from: "EVC",
+      to: "WITHDRAWN",
+      action: "withdraw",
       allowed_roles: [UserRole.INSTITUTION, UserRole.ADMIN],
       requires_reason: true,
       auto: false,
     },
     {
-      from: 'SAC_SHC',
-      to: 'WITHDRAWN',
-      action: 'withdraw',
+      from: "SAC_SHC",
+      to: "WITHDRAWN",
+      action: "withdraw",
       allowed_roles: [UserRole.INSTITUTION, UserRole.ADMIN],
       requires_reason: true,
       auto: false,
@@ -754,48 +821,510 @@ export const SCRUTINY_EVC_PIPELINE_V1: PipelineDsl = PipelineDslSchema.parse({
   ],
   return_rules: [
     {
-      from_stage: 'SCRUTINY',
-      to_stage: 'DEFICIENCY_RECTIFICATION',
+      from_stage: "SCRUTINY",
+      to_stage: "DEFICIENCY_RECTIFICATION",
       // TODO(APH-VERIFY): Verify exact clause reference, timeline, and fee schedule against AICTE Approval Process Handbook (APH 2024-27).
       reason_codes: [
-        'DEF_LAND_DOCS_INCOMPLETE',
-        'DEF_FACULTY_CADRE_SHORTFALL',
-        'DEF_FDR_ENCUMBRANCE_MISMATCH',
-        'DEF_FIRE_SAFETY_EXPIRED',
-        'DEF_AFFIDAVIT_FORMAT_INVALID',
+        "DEF_LAND_DOCS_INCOMPLETE",
+        "DEF_FACULTY_CADRE_SHORTFALL",
+        "DEF_FDR_ENCUMBRANCE_MISMATCH",
+        "DEF_FIRE_SAFETY_EXPIRED",
+        "DEF_AFFIDAVIT_FORMAT_INVALID",
       ],
       requires_reason: true,
     },
     {
-      from_stage: 'EVC',
-      to_stage: 'SAC_SHC',
+      from_stage: "EVC",
+      to_stage: "SAC_SHC",
       // TODO(APH-VERIFY): Verify exact clause reference, timeline, and fee schedule against AICTE Approval Process Handbook (APH 2024-27).
       reason_codes: [
-        'EVC_LAB_EQUIPMENT_SHORTFALL',
-        'EVC_BUILT_UP_AREA_DEFICIENT',
-        'EVC_COMPUTING_INFRA_SHORTFALL',
-        'EVC_BARRIER_FREE_NON_COMPLIANT',
+        "EVC_LAB_EQUIPMENT_SHORTFALL",
+        "EVC_BUILT_UP_AREA_DEFICIENT",
+        "EVC_COMPUTING_INFRA_SHORTFALL",
+        "EVC_BARRIER_FREE_NON_COMPLIANT",
       ],
       requires_reason: true,
     },
   ],
-  escalation_policy_ref: 'ESC_POLICY_NEW_INST_EVC_STRICT_TODO_APH_VERIFY',
+  escalation_policy_ref: "ESC_POLICY_NEW_INST_EVC_STRICT_TODO_APH_VERIFY",
   metadata: {
     // TODO(APH-VERIFY): Verify exact clause reference, timeline, and fee schedule against AICTE Approval Process Handbook (APH 2024-27).
-    aph_edition: 'APH-2024-27-TODO(APH-VERIFY)',
-    version: '1.0.0',
-    effective_from: '2026-04-01T00:00:00.000Z',
+    aph_edition: "APH-2024-27-TODO(APH-VERIFY)",
+    version: "1.0.0",
+    effective_from: "2026-04-01T00:00:00.000Z",
   },
 });
 
-export const SEEDED_PIPELINE_DEFINITIONS: Record<string, { id: string; dsl: PipelineDsl }> = {
+export const SCRUTINY_EVC_SAC_SHC_PIPELINE_V1: PipelineDsl =
+  PipelineDslSchema.parse({
+    code: "SCRUTINY_EVC_SAC_SHC_V1",
+    name: "Route 3: Scrutiny + EVC + SAC/SHC Full Ladder",
+    description:
+      "Statutory approval pipeline covering Documentary Scrutiny, EVC on-site visit, SAC/SHC hearing, and Bureau final decision.",
+    initial_stage: "SUBMISSION",
+    stages: [
+      {
+        id: "SUBMISSION",
+        label: "Institutional Application & TER Fee Submission",
+        owner_role: UserRole.INSTITUTION,
+        timeline_working_days: 0,
+        ball_with: "INSTITUTION",
+        requires_evc: false,
+        requires_committee: false,
+      },
+      {
+        id: "SCRUTINY",
+        label: "Documentary Scrutiny Committee",
+        owner_role: UserRole.REGIONAL_OFFICER,
+        timeline_working_days: 15,
+        ball_with: "AICTE",
+        requires_evc: false,
+        requires_committee: false,
+      },
+      {
+        id: "DEFICIENCY_RECTIFICATION",
+        label: "Deficiency Rectification & Re-Scrutiny Evidence",
+        owner_role: UserRole.INSTITUTION,
+        timeline_working_days: 10,
+        ball_with: "INSTITUTION",
+        requires_evc: false,
+        requires_committee: false,
+      },
+      {
+        id: "EVC",
+        label: "Expert Visit Committee (EVC) On-site Inspection",
+        owner_role: UserRole.COMMITTEE_MEMBER,
+        timeline_working_days: 21,
+        ball_with: "AICTE",
+        requires_evc: true,
+        requires_committee: true,
+      },
+      {
+        id: "SAC_SHC",
+        label: "Standing Hearing / Appellate Committee (SAC/SHC)",
+        owner_role: UserRole.COMMITTEE_MEMBER,
+        timeline_working_days: 14,
+        ball_with: "AICTE",
+        requires_evc: false,
+        requires_committee: true,
+      },
+      {
+        id: "BUREAU_REVIEW",
+        label: "Bureau Head & Competent Authority Final Review",
+        owner_role: UserRole.BUREAU_OFFICER,
+        timeline_working_days: 7,
+        ball_with: "AICTE",
+        requires_evc: false,
+        requires_committee: false,
+      },
+      {
+        id: "APPROVED",
+        label: "Order of Approval (EoA / LoA) Issued",
+        owner_role: UserRole.BUREAU_OFFICER,
+        timeline_working_days: 0,
+        ball_with: "AICTE",
+        requires_evc: false,
+        requires_committee: false,
+      },
+      {
+        id: "REJECTED",
+        label: "Application Rejected / Show Cause Finalized",
+        owner_role: UserRole.BUREAU_OFFICER,
+        timeline_working_days: 0,
+        ball_with: "AICTE",
+        requires_evc: false,
+        requires_committee: false,
+      },
+      {
+        id: "WITHDRAWN",
+        label: "Application Withdrawn by Applicant",
+        owner_role: UserRole.INSTITUTION,
+        timeline_working_days: 0,
+        ball_with: "INSTITUTION",
+        requires_evc: false,
+        requires_committee: false,
+      },
+    ],
+    transitions: [
+      {
+        from: "SUBMISSION",
+        to: "SCRUTINY",
+        action: "submit",
+        allowed_roles: [UserRole.INSTITUTION, UserRole.ADMIN],
+        requires_reason: false,
+        auto: false,
+      },
+      {
+        from: "SCRUTINY",
+        to: "EVC",
+        action: "advance",
+        allowed_roles: [UserRole.REGIONAL_OFFICER, UserRole.ADMIN],
+        requires_reason: false,
+        auto: false,
+      },
+      {
+        from: "SCRUTINY",
+        to: "DEFICIENCY_RECTIFICATION",
+        action: "return_for_deficiency",
+        allowed_roles: [
+          UserRole.COMMITTEE_MEMBER,
+          UserRole.REGIONAL_OFFICER,
+          UserRole.ADMIN,
+        ],
+        requires_reason: true,
+        auto: false,
+      },
+      {
+        from: "DEFICIENCY_RECTIFICATION",
+        to: "SCRUTINY",
+        action: "submit",
+        allowed_roles: [UserRole.INSTITUTION, UserRole.ADMIN],
+        requires_reason: true,
+        auto: false,
+      },
+      {
+        from: "EVC",
+        to: "SAC_SHC",
+        action: "advance",
+        allowed_roles: [
+          UserRole.COMMITTEE_MEMBER,
+          UserRole.REGIONAL_OFFICER,
+          UserRole.ADMIN,
+        ],
+        requires_reason: false,
+        auto: false,
+      },
+      {
+        from: "EVC",
+        to: "SAC_SHC",
+        action: "return_for_deficiency",
+        allowed_roles: [
+          UserRole.COMMITTEE_MEMBER,
+          UserRole.REGIONAL_OFFICER,
+          UserRole.ADMIN,
+        ],
+        requires_reason: true,
+        auto: false,
+      },
+      {
+        from: "SAC_SHC",
+        to: "BUREAU_REVIEW",
+        action: "advance",
+        allowed_roles: [
+          UserRole.COMMITTEE_MEMBER,
+          UserRole.BUREAU_OFFICER,
+          UserRole.ADMIN,
+        ],
+        requires_reason: true,
+        auto: false,
+      },
+      {
+        from: "BUREAU_REVIEW",
+        to: "APPROVED",
+        action: "advance",
+        allowed_roles: [UserRole.BUREAU_OFFICER, UserRole.ADMIN],
+        requires_reason: true,
+        auto: false,
+      },
+      {
+        from: "BUREAU_REVIEW",
+        to: "REJECTED",
+        action: "reject",
+        allowed_roles: [UserRole.BUREAU_OFFICER, UserRole.ADMIN],
+        requires_reason: true,
+        auto: false,
+      },
+      {
+        from: "SUBMISSION",
+        to: "WITHDRAWN",
+        action: "withdraw",
+        allowed_roles: [UserRole.INSTITUTION, UserRole.ADMIN],
+        requires_reason: true,
+        auto: false,
+      },
+    ],
+    return_rules: [
+      {
+        from_stage: "SCRUTINY",
+        to_stage: "DEFICIENCY_RECTIFICATION",
+        reason_codes: [
+          "DEF_LAND_DOCS_INCOMPLETE",
+          "DEF_FACULTY_CADRE_SHORTFALL",
+          "DEF_FIRE_SAFETY_EXPIRED",
+        ],
+        requires_reason: true,
+      },
+    ],
+    escalation_policy_ref: "ESC_POLICY_ROUTE_3_FULL_LADDER",
+    metadata: {
+      aph_edition: "APH-2024-27-TODO(APH-VERIFY)",
+      version: "1.0.0",
+      effective_from: "2026-04-01T00:00:00.000Z",
+    },
+  });
+
+export const ONLY_EVC_PIPELINE_V1: PipelineDsl = PipelineDslSchema.parse({
+  code: "ONLY_EVC_V1",
+  name: "Route 4: Only EVC Inspection",
+  description:
+    "Surprise visit or complaints-driven inspection routing directly through Expert Visit Committee.",
+  initial_stage: "SUBMISSION",
+  stages: [
+    {
+      id: "SUBMISSION",
+      label: "Inspection Initiation & Quorum Assembly",
+      owner_role: UserRole.BUREAU_OFFICER,
+      timeline_working_days: 0,
+      ball_with: "AICTE",
+      requires_evc: false,
+      requires_committee: false,
+    },
+    {
+      id: "EVC",
+      label: "Expert Visit Committee (EVC) On-site Inspection",
+      owner_role: UserRole.COMMITTEE_MEMBER,
+      timeline_working_days: 10,
+      ball_with: "AICTE",
+      requires_evc: true,
+      requires_committee: true,
+    },
+    {
+      id: "BUREAU_REVIEW",
+      label: "Bureau Head & Competent Authority Review",
+      owner_role: UserRole.BUREAU_OFFICER,
+      timeline_working_days: 5,
+      ball_with: "AICTE",
+      requires_evc: false,
+      requires_committee: false,
+    },
+    {
+      id: "APPROVED",
+      label: "Inspection Findings Verified & Cleared",
+      owner_role: UserRole.BUREAU_OFFICER,
+      timeline_working_days: 0,
+      ball_with: "AICTE",
+      requires_evc: false,
+      requires_committee: false,
+    },
+    {
+      id: "REJECTED",
+      label: "Punitive SCN / Notice of Withdrawal Issued",
+      owner_role: UserRole.BUREAU_OFFICER,
+      timeline_working_days: 0,
+      ball_with: "AICTE",
+      requires_evc: false,
+      requires_committee: false,
+    },
+  ],
+  transitions: [
+    {
+      from: "SUBMISSION",
+      to: "EVC",
+      action: "advance",
+      allowed_roles: [
+        UserRole.REGIONAL_OFFICER,
+        UserRole.BUREAU_OFFICER,
+        UserRole.ADMIN,
+      ],
+      requires_reason: false,
+      auto: false,
+    },
+    {
+      from: "EVC",
+      to: "BUREAU_REVIEW",
+      action: "advance",
+      allowed_roles: [UserRole.COMMITTEE_MEMBER, UserRole.ADMIN],
+      requires_reason: false,
+      auto: false,
+    },
+    {
+      from: "BUREAU_REVIEW",
+      to: "APPROVED",
+      action: "advance",
+      allowed_roles: [UserRole.BUREAU_OFFICER, UserRole.ADMIN],
+      requires_reason: true,
+      auto: false,
+    },
+    {
+      from: "BUREAU_REVIEW",
+      to: "REJECTED",
+      action: "reject",
+      allowed_roles: [UserRole.BUREAU_OFFICER, UserRole.ADMIN],
+      requires_reason: true,
+      auto: false,
+    },
+  ],
+  return_rules: [],
+  escalation_policy_ref: "ESC_POLICY_ROUTE_4_ONLY_EVC",
+  metadata: {
+    aph_edition: "APH-2024-27-TODO(APH-VERIFY)",
+    version: "1.0.0",
+    effective_from: "2026-04-01T00:00:00.000Z",
+  },
+});
+
+export const CONDITIONAL_PROCESSING_PIPELINE_V1: PipelineDsl =
+  PipelineDslSchema.parse({
+    code: "CONDITIONAL_PROCESSING_V1",
+    name: "Route 5: Conditional Deficiency Processing & Hearing",
+    description:
+      "Adaptive regulatory route branching based on deficiency discovery, compliance uploads, and SHC hearings.",
+    initial_stage: "SUBMISSION",
+    stages: [
+      {
+        id: "SUBMISSION",
+        label: "Institutional Submission",
+        owner_role: UserRole.INSTITUTION,
+        timeline_working_days: 0,
+        ball_with: "INSTITUTION",
+        requires_evc: false,
+        requires_committee: false,
+      },
+      {
+        id: "SCRUTINY",
+        label: "Scrutiny Evaluation",
+        owner_role: UserRole.REGIONAL_OFFICER,
+        timeline_working_days: 15,
+        ball_with: "AICTE",
+        requires_evc: false,
+        requires_committee: false,
+      },
+      {
+        id: "DEFICIENCY_RECTIFICATION",
+        label: "Deficiency Evidence Upload",
+        owner_role: UserRole.INSTITUTION,
+        timeline_working_days: 10,
+        ball_with: "INSTITUTION",
+        requires_evc: false,
+        requires_committee: false,
+      },
+      {
+        id: "SAC_SHC",
+        label: "Standing Hearing Committee (SHC Hearing)",
+        owner_role: UserRole.COMMITTEE_MEMBER,
+        timeline_working_days: 14,
+        ball_with: "AICTE",
+        requires_evc: false,
+        requires_committee: true,
+      },
+      {
+        id: "BUREAU_REVIEW",
+        label: "Bureau Head Determination",
+        owner_role: UserRole.BUREAU_OFFICER,
+        timeline_working_days: 7,
+        ball_with: "AICTE",
+        requires_evc: false,
+        requires_committee: false,
+      },
+      {
+        id: "APPROVED",
+        label: "Conditional Approval Granted",
+        owner_role: UserRole.BUREAU_OFFICER,
+        timeline_working_days: 0,
+        ball_with: "AICTE",
+        requires_evc: false,
+        requires_committee: false,
+      },
+      {
+        id: "REJECTED",
+        label: "Rejection Finalized",
+        owner_role: UserRole.BUREAU_OFFICER,
+        timeline_working_days: 0,
+        ball_with: "AICTE",
+        requires_evc: false,
+        requires_committee: false,
+      },
+    ],
+    transitions: [
+      {
+        from: "SUBMISSION",
+        to: "SCRUTINY",
+        action: "submit",
+        allowed_roles: [UserRole.INSTITUTION, UserRole.ADMIN],
+        requires_reason: false,
+        auto: false,
+      },
+      {
+        from: "SCRUTINY",
+        to: "DEFICIENCY_RECTIFICATION",
+        action: "return_for_deficiency",
+        allowed_roles: [
+          UserRole.REGIONAL_OFFICER,
+          UserRole.COMMITTEE_MEMBER,
+          UserRole.ADMIN,
+        ],
+        requires_reason: true,
+        auto: false,
+      },
+      {
+        from: "DEFICIENCY_RECTIFICATION",
+        to: "SAC_SHC",
+        action: "advance",
+        allowed_roles: [UserRole.REGIONAL_OFFICER, UserRole.ADMIN],
+        requires_reason: true,
+        auto: false,
+      },
+      {
+        from: "SAC_SHC",
+        to: "BUREAU_REVIEW",
+        action: "advance",
+        allowed_roles: [
+          UserRole.COMMITTEE_MEMBER,
+          UserRole.BUREAU_OFFICER,
+          UserRole.ADMIN,
+        ],
+        requires_reason: true,
+        auto: false,
+      },
+      {
+        from: "BUREAU_REVIEW",
+        to: "APPROVED",
+        action: "advance",
+        allowed_roles: [UserRole.BUREAU_OFFICER, UserRole.ADMIN],
+        requires_reason: true,
+        auto: false,
+      },
+      {
+        from: "BUREAU_REVIEW",
+        to: "REJECTED",
+        action: "reject",
+        allowed_roles: [UserRole.BUREAU_OFFICER, UserRole.ADMIN],
+        requires_reason: true,
+        auto: false,
+      },
+    ],
+    return_rules: [],
+    escalation_policy_ref: "ESC_POLICY_ROUTE_5_CONDITIONAL",
+    metadata: {
+      aph_edition: "APH-2024-27-TODO(APH-VERIFY)",
+      version: "1.0.0",
+      effective_from: "2026-04-01T00:00:00.000Z",
+    },
+  });
+
+export const SEEDED_PIPELINE_DEFINITIONS: Record<
+  string,
+  { id: string; dsl: PipelineDsl }
+> = {
   ONLY_SCRUTINY: {
-    id: '66666666-6666-4666-8666-666666666601',
+    id: "66666666-6666-4666-8666-666666666601",
     dsl: ONLY_SCRUTINY_PIPELINE_V1,
   },
   SCRUTINY_EVC: {
-    id: '66666666-6666-4666-8666-666666666602',
+    id: "66666666-6666-4666-8666-666666666602",
     dsl: SCRUTINY_EVC_PIPELINE_V1,
+  },
+  SCRUTINY_EVC_SAC_SHC: {
+    id: "66666666-6666-4666-8666-666666666603",
+    dsl: SCRUTINY_EVC_SAC_SHC_PIPELINE_V1,
+  },
+  ONLY_EVC: {
+    id: "66666666-6666-4666-8666-666666666604",
+    dsl: ONLY_EVC_PIPELINE_V1,
+  },
+  CONDITIONAL_PROCESSING: {
+    id: "66666666-6666-4666-8666-666666666605",
+    dsl: CONDITIONAL_PROCESSING_PIPELINE_V1,
   },
 };
 
@@ -805,13 +1334,13 @@ export const SEEDED_PIPELINE_DEFINITIONS: Record<string, { id: string; dsl: Pipe
  * ============================================================================
  */
 export const ConditionOperatorSchema = z.enum([
-  'EQUALS',
-  'NOT_EQUALS',
-  'IN',
-  'GREATER_THAN',
-  'LESS_THAN',
-  'CONTAINS',
-  'ALL_TRUE',
+  "EQUALS",
+  "NOT_EQUALS",
+  "IN",
+  "GREATER_THAN",
+  "LESS_THAN",
+  "CONTAINS",
+  "ALL_TRUE",
 ]);
 
 export type ConditionOperator = z.infer<typeof ConditionOperatorSchema>;
@@ -827,12 +1356,12 @@ export const WorkflowConditionSchema = z.object({
 export type WorkflowCondition = z.infer<typeof WorkflowConditionSchema>;
 
 export const WorkflowActionTypeSchema = z.enum([
-  'DISPATCH_OUTBOX_NOTIFICATION',
-  'RECORD_AUDIT_LOG',
-  'SCHEDULE_EVC_INSPECTION',
-  'START_SLA_COUNTDOWN',
-  'REGISTER_UNDERTAKING',
-  'GENERATE_ADVISORY_REPORT',
+  "DISPATCH_OUTBOX_NOTIFICATION",
+  "RECORD_AUDIT_LOG",
+  "SCHEDULE_EVC_INSPECTION",
+  "START_SLA_COUNTDOWN",
+  "REGISTER_UNDERTAKING",
+  "GENERATE_ADVISORY_REPORT",
 ]);
 
 export const WorkflowActionSchema = z.object({
@@ -853,7 +1382,7 @@ export const WorkflowTransitionSchema = z.object({
   allowedRoles: z.array(z.nativeEnum(UserRole)).min(1),
   requiresHumanSignoff: z.boolean().default(true),
   // TODO(APH-VERIFY): Verify official stage transition timelines and APH regulatory clauses
-  aphClause: z.string().default('TODO(APH-VERIFY)'),
+  aphClause: z.string().default("TODO(APH-VERIFY)"),
   conditions: z.array(WorkflowConditionSchema).default([]),
   actions: z.array(WorkflowActionSchema).default([]),
 });
@@ -862,11 +1391,16 @@ export type WorkflowTransition = z.infer<typeof WorkflowTransitionSchema>;
 
 export const WorkflowDefinitionSchema = z.object({
   id: z.string(),
-  version: z.string().regex(/^\d+\.\d+(\.\d+)?$/, 'Version must follow SemVer format e.g. 1.0.0'),
+  version: z
+    .string()
+    .regex(
+      /^\d+\.\d+(\.\d+)?$/,
+      "Version must follow SemVer format e.g. 1.0.0",
+    ),
   name: z.string(),
   description: z.string(),
   // TODO(APH-VERIFY): Verify approval handbook cycle year
-  aphCycle: z.string().default('APH-2026-2027-TODO(APH-VERIFY)'),
+  aphCycle: z.string().default("APH-2026-2027-TODO(APH-VERIFY)"),
   initialState: z.nativeEnum(ApplicationStatus),
   terminalStates: z.array(z.nativeEnum(ApplicationStatus)),
   transitions: z.array(WorkflowTransitionSchema).min(1),
@@ -874,3 +1408,7 @@ export const WorkflowDefinitionSchema = z.object({
 });
 
 export type WorkflowDefinition = z.infer<typeof WorkflowDefinitionSchema>;
+
+export * from "./aph-engine.js";
+export * from "./statutory-policies.js";
+export * from "./clause-intelligence.js";

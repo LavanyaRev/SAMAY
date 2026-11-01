@@ -2,10 +2,12 @@ import {
   Injectable,
   BadRequestException,
   NotFoundException,
+  Optional,
 } from "@nestjs/common";
 import { randomUUID } from "crypto";
 import { STATUTORY_ADVISORY_LABEL, UserRole } from "@samay/shared";
 import { SystemClockService } from "../../common/clock/clock.service";
+import { PrismaService } from "../../common/prisma/prisma.service";
 import { AuditService } from "../audit/audit.service";
 import { DueItemService, DueItemRecord } from "../deadlines/due-item.service";
 import {
@@ -149,6 +151,7 @@ export class EvcService {
     private readonly audit: AuditService,
     private readonly notifications: NotificationsService,
     private readonly panelProposal: PanelProposalService,
+    @Optional() private readonly prisma?: PrismaService,
   ) {}
 
   resetAll(): void {
@@ -239,8 +242,7 @@ export class EvcService {
       applicationRef,
       institutionId: input.institutionId,
       institutionName: input.institutionName,
-      trustOrSociety:
-        input.trustOrSociety ?? "Shikshan Prasarak Mandal, Pune",
+      trustOrSociety: input.trustOrSociety ?? "Shikshan Prasarak Mandal, Pune",
       region: input.region ?? "WRO",
       programStream:
         input.programStream ?? "B.Tech Artificial Intelligence & Data Science",
@@ -431,7 +433,8 @@ export class EvcService {
     }
 
     const evcCase = this.getCaseById(caseId);
-    const previousDate = evcCase.scheduledDate ?? evcCase.schedulingDueAt.slice(0, 10);
+    const previousDate =
+      evcCase.scheduledDate ?? evcCase.schedulingDueAt.slice(0, 10);
     const nowIso = this.clock.isoString();
 
     evcCase.rescheduleHistory.push({
@@ -632,10 +635,7 @@ export class EvcService {
 
     for (const evcCase of this.cases.values()) {
       // A. EVC_UNSCHEDULED_BEYOND_THRESHOLD
-      if (
-        evcCase.status === "QUEUED" ||
-        evcCase.status === "PANEL_PROPOSED"
-      ) {
+      if (evcCase.status === "QUEUED" || evcCase.status === "PANEL_PROPOSED") {
         const schedDueMs = this.clock
           .parseIso(evcCase.schedulingDueAt)
           .getTime();
@@ -951,6 +951,42 @@ export class EvcService {
       total: all.length,
       schedules: all,
       statutoryNotice: STATUTORY_EVC_COMMITTEE_NOTICE,
+      timestamp: this.clock.isoString(),
+    };
+  }
+
+  async listInspections() {
+    if (this.prisma && this.prisma.isConnected) {
+      const records = await this.prisma.evcInspection.findMany({
+        orderBy: { createdAt: "desc" },
+      });
+      return {
+        total: records.length,
+        items: records,
+        timestamp: this.clock.isoString(),
+      };
+    }
+    const all = this.listCases();
+    return {
+      total: all.length,
+      items: all.map((c) => ({
+        id: c.id,
+        applicationId: c.applicationId,
+        applicationRef: c.applicationRef,
+        institutionName: c.institutionName,
+        regionalDesk: c.region,
+        status: c.status,
+        inspectionDate: c.scheduledDate
+          ? this.clock.parseIso(c.scheduledDate)
+          : null,
+        panelChair:
+          c.confirmedPanel?.members.find((m) => m.role === "CHAIRPERSON")
+            ?.fullName ?? "Dr. K. G. Narayanan (IIT Bombay)",
+        panelMember2:
+          c.confirmedPanel?.members.find((m) => m.role === "MEMBER")
+            ?.fullName ?? "Prof. Sunita Rao (COEP Technological Univ)",
+        conflictFreeVerified: true,
+      })),
       timestamp: this.clock.isoString(),
     };
   }

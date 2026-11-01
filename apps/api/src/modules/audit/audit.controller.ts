@@ -1,15 +1,29 @@
-import { Controller, Get, Param } from "@nestjs/common";
-import { ApiTags, ApiOperation, ApiResponse, ApiParam } from "@nestjs/swagger";
+import { Controller, Get, Param, UseGuards } from "@nestjs/common";
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiBearerAuth,
+} from "@nestjs/swagger";
+import { UserRole } from "@samay/shared";
 import { AuditService } from "./audit.service";
+import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { RolesGuard } from "../auth/roles.guard";
+import { Roles } from "../auth/roles.decorator";
 
 @ApiTags("Audit")
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.BUREAU_OFFICER, UserRole.ADMIN)
 @Controller("audit")
 export class AuditController {
   constructor(private readonly auditService: AuditService) {}
 
   @Get("entity/:entityId")
   @ApiOperation({
-    summary: "Get immutable hash-chained audit trail for an application or entity",
+    summary:
+      "Get immutable hash-chained audit trail for an application or entity",
   })
   @ApiParam({ name: "entityId", description: "Target entity UUID" })
   @ApiResponse({ status: 200, description: "Audit trail records" })

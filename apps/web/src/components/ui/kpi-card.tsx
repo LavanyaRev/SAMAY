@@ -1,13 +1,15 @@
-'use client';
+"use client";
 
-import React from 'react';
-import { cn } from '@/lib/utils';
-import { SlaBadge, type SlaState } from './sla-badge';
+import React from "react";
+import { cn } from "@/lib/utils";
+import { SlaBadge, type SlaState } from "./sla-badge";
 
 interface KpiCardProps {
   label: string;
   value: string | number;
   sublabel?: string;
+  subtext?: string;
+  trend?: "positive" | "warning" | "neutral";
   slaState?: SlaState;
   slaDetail?: string;
   codeTag?: string;
@@ -18,15 +20,17 @@ export function KpiCard({
   label,
   value,
   sublabel,
+  subtext,
   slaState,
   slaDetail,
   codeTag,
   className,
 }: KpiCardProps) {
+  const effectiveSub = sublabel || subtext;
   return (
     <div
       className={cn(
-        'flex flex-col justify-between rounded-sm border border-border bg-surface-raised p-3.5',
+        "flex flex-col justify-between rounded-sm border border-border bg-surface-raised p-3.5",
         className,
       )}
     >
@@ -46,12 +50,11 @@ export function KpiCard({
         {slaState && <SlaBadge state={slaState} detail={slaDetail} />}
       </div>
 
-      {sublabel && (
+      {effectiveSub && (
         <p className="mt-1.5 border-t border-border pt-1.5 text-[11px] text-text-muted">
-          {sublabel}
+          {effectiveSub}
         </p>
       )}
     </div>
   );
 }
-

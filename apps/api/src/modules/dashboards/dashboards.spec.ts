@@ -5,11 +5,14 @@ import { ClockModule } from "../../common/clock/clock.module";
 import { SystemClockService } from "../../common/clock/clock.service";
 import { DashboardsModule } from "./dashboards.module";
 import { DashboardsService } from "./dashboards.service";
+import { DashboardsController } from "./dashboards.controller";
+import { AuthenticatedUser } from "../auth/current-user.decorator";
 
 describe("Phase 9: Analytics API, Scope Enforcement, Short-TTL Scoped Cache & Seeded Aggregate Snapshots", () => {
   let moduleRef: TestingModule;
   let clock: SystemClockService;
   let dashboardsService: DashboardsService;
+  let dashboardsController: DashboardsController;
 
   beforeEach(async () => {
     moduleRef = await Test.createTestingModule({
@@ -18,6 +21,7 @@ describe("Phase 9: Analytics API, Scope Enforcement, Short-TTL Scoped Cache & Se
 
     clock = moduleRef.get(SystemClockService);
     dashboardsService = moduleRef.get(DashboardsService);
+    dashboardsController = moduleRef.get(DashboardsController);
 
     clock.setSimulatedTime(
       clock.parseIso("2026-05-01T03:30:00.000Z").getTime(),
@@ -192,5 +196,49 @@ describe("Phase 9: Analytics API, Scope Enforcement, Short-TTL Scoped Cache & Se
         (c) => c.region === "WRO" && c.stage === "SCRUTINY",
       ),
     ).toBe(true);
+  });
+
+  it("5. Verifies strict RBAC isolation on DashboardsController (Regional Officer cannot access Pan-India Macro or other regions)", () => {
+    const regionalOfficerUser: AuthenticatedUser = {
+      id: "usr-ro-wro",
+      keycloakId: "kc-ro-wro",
+      fullName: "Dr. Suresh Patil",
+      email: "ro.wro@aicte.gov.in",
+      role: UserRole.REGIONAL_OFFICER,
+      roles: [UserRole.REGIONAL_OFFICER],
+      regionCode: "WRO",
+    };
+
+    const bureauOfficerUser: AuthenticatedUser = {
+      id: "usr-bureau",
+      keycloakId: "kc-bureau",
+      fullName: "Dr. Arvind Kulkarni",
+      email: "bureau.approval@aicte.gov.in",
+      role: UserRole.BUREAU_OFFICER,
+      roles: [UserRole.BUREAU_OFFICER],
+    };
+
+    // Regional Officer accessing summary throws ForbiddenException
+    expect(() => dashboardsController.getSummary(regionalOfficerUser)).toThrow(
+      ForbiddenException,
+    );
+
+    // Regional Officer querying another region (NRO) throws ForbiddenException
+    expect(() =>
+      dashboardsController.getApplicationsByStage(regionalOfficerUser, {
+        region: "NRO",
+      }),
+    ).toThrow(ForbiddenException);
+
+    // Regional Officer querying own region succeeds
+    const roResult = dashboardsController.getApplicationsByStage(
+      regionalOfficerUser,
+      { region: "WRO" },
+    );
+    expect(roResult.data.totalApplications).toBe(84);
+
+    // Bureau Officer calling summary succeeds
+    const bureauSummary = dashboardsController.getSummary(bureauOfficerUser);
+    expect(bureauSummary.activeApplications).toBe(500);
   });
 });

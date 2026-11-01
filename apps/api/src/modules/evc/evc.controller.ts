@@ -9,7 +9,7 @@ export class EvcController {
   constructor(
     private readonly evcService: EvcService,
     private readonly panelProposalService: PanelProposalService,
-  ) { }
+  ) {}
 
   @Get("schedules")
   @ApiOperation({
@@ -18,6 +18,15 @@ export class EvcController {
   @ApiResponse({ status: 200, description: "EVC schedule list" })
   listSchedules() {
     return this.evcService.listSchedules();
+  }
+
+  @Get("inspections")
+  @ApiOperation({
+    summary: "List live EVC inspections from database and runtime store",
+  })
+  @ApiResponse({ status: 200, description: "EVC live inspections list" })
+  listInspections() {
+    return this.evcService.listInspections();
   }
 
   @Get("cases")

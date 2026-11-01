@@ -4,6 +4,7 @@ import {
   Post,
   Body,
   Param,
+  Query,
   UseGuards,
 } from "@nestjs/common";
 import {
@@ -13,16 +14,15 @@ import {
   ApiParam,
   ApiBearerAuth,
 } from "@nestjs/swagger";
+import { WorkflowActionName, WorkflowService } from "./workflow.service";
 import {
-  WorkflowActionName,
-  WorkflowService,
-} from "./workflow.service";
-import { ApplicationStatus, UserRole } from "@samay/shared";
+  ApplicationStatus,
+  UserRole,
+  AphApplicationCategory,
+  type DocumentAnalysisInput,
+} from "@samay/shared";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
-import {
-  AuthenticatedUser,
-  CurrentUser,
-} from "../auth/current-user.decorator";
+import { AuthenticatedUser, CurrentUser } from "../auth/current-user.decorator";
 
 @ApiTags("Workflow")
 @Controller("workflow")
@@ -71,7 +71,10 @@ export class WorkflowController {
   })
   @ApiParam({ name: "id", description: "Application UUID" })
   @ApiResponse({ status: 200, description: "Application submitted" })
-  @ApiResponse({ status: 409, description: "Optimistic locking version conflict" })
+  @ApiResponse({
+    status: 409,
+    description: "Optimistic locking version conflict",
+  })
   submitApplication(
     @Param("id") id: string,
     @CurrentUser() user: AuthenticatedUser,
@@ -101,8 +104,14 @@ export class WorkflowController {
   })
   @ApiParam({ name: "id", description: "Application UUID" })
   @ApiResponse({ status: 200, description: "Action executed atomically" })
-  @ApiResponse({ status: 403, description: "Role not permitted for transition" })
-  @ApiResponse({ status: 409, description: "Optimistic locking version conflict" })
+  @ApiResponse({
+    status: 403,
+    description: "Role not permitted for transition",
+  })
+  @ApiResponse({
+    status: 409,
+    description: "Optimistic locking version conflict",
+  })
   performAction(
     @Param("id") id: string,
     @CurrentUser() user: AuthenticatedUser,
@@ -154,5 +163,44 @@ export class WorkflowController {
       body.actorRole,
       body.rationale,
     );
+  }
+
+  @Get("evaluate-aph")
+  @ApiOperation({
+    summary:
+      "Evaluate dynamic APH 2024-27 workflow plan for application category",
+  })
+  evaluateAphWorkflow(
+    @Query("category") category?: AphApplicationCategory,
+    @Query("isContested") isContested?: string,
+    @Query("hasShortcomings") hasShortcomings?: string,
+    @Query("requiresEvc") requiresEvc?: string,
+    @Query("deficiencies") deficiencies?: string,
+  ) {
+    return this.workflowService.evaluateAphWorkflow({
+      category: category || AphApplicationCategory.EOA_SELF_DISCLOSURE,
+      isContestedRejection: isContested === "true",
+      hasShortcomingsOrScn: hasShortcomings === "true",
+      requiresOnSiteInspection: requiresEvc === "true",
+      deficiencyCount: deficiencies ? parseInt(deficiencies, 10) : 0,
+    });
+  }
+
+  @Get("policies")
+  @ApiOperation({
+    summary:
+      "Get centralized statutory policies and deadlines from APH rule engine",
+  })
+  getStatutoryPolicies() {
+    return this.workflowService.getStatutoryPolicies();
+  }
+
+  @Post("analyze-document")
+  @ApiOperation({
+    summary:
+      "Analyze document against APH clauses with structural completeness verification",
+  })
+  analyzeDocument(@Body() body: DocumentAnalysisInput) {
+    return this.workflowService.analyzeDocument(body);
   }
 }

@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
+    "@samay/shared": "workspace:*",
     "zod": "^3.23.8"
   },
   "devDependencies": {

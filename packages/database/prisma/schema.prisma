@@ -134,12 +134,15 @@ model PipelineDefinition {
 // 6. Applications (With RLS isolation on region_id)
 model Application {
   id                      String    @id @default(uuid()) @db.Uuid
+  applicationRef          String?   @unique @map("application_ref") @db.VarChar(100)
   institutionId           String    @map("institution_id") @db.Uuid
   regionId                String    @map("region_id") @db.Uuid // Denormalized for RLS & direct region queries
   applicationTypeId       String    @map("application_type_id") @db.Uuid
   academicYear            String    @map("academic_year") @db.VarChar(20) // e.g. 2026-27
   stage                   String    @db.VarChar(50) // SUBMISSION, SCRUTINY, EVC, SAC_SHC, FINAL_DECISION
-  status                  String    @db.VarChar(50) // DRAFT, SUBMITTED, UNDER_SCRUTINY, SCRUTINY_DEFICIENT, etc.
+  status                  String    @db.VarChar(50) // DRAFT, SUBMITTED, UNDER_SCRUTINY, SCRUTINY_DEFICIENT, SCRUTINY_CLEARED, etc.
+  ballWith                String    @default("AICTE") @map("ball_with") @db.VarChar(50)
+  currentQueue            String?   @default("REGIONAL_SCRUTINY") @map("current_queue") @db.VarChar(50)
   pipelineDefinitionId    String    @map("pipeline_definition_id") @db.Uuid
   version                 Int       @default(1)
   submittedAt             DateTime? @map("submitted_at")
@@ -157,6 +160,8 @@ model Application {
 
   stageInstances StageInstance[]
   evcCases       EvcCase[]
+  evcInspections EvcInspection[]
+  deficiencies   DeficiencyRecord[]
   undertakings   Undertaking[]
 
   @@index([regionId])
@@ -515,4 +520,99 @@ model SystemSetting {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   @@map("system_settings")
+}
+
+// 22. Statutory Policies (APH 2024-2027 canonical rules & parameters)
+model StatutoryPolicy {
+  id              String    @id @default(uuid()) @db.VarChar(100)
+  applicationType String    @map("application_type") @db.VarChar(100)
+  stage           String    @db.VarChar(100)
+  parameterKey    String    @unique @map("parameter_key") @db.VarChar(150)
+  parameterName   String    @map("parameter_name") @db.VarChar(255)
+  deadlineDays    Int       @default(0) @map("deadline_days")
+  thresholdValue  String?   @map("threshold_value") @db.VarChar(100)
+  source          String    @default("APH 2024-27") @db.VarChar(100)
+  sourceClause    String    @map("source_clause") @db.VarChar(255)
+  effectiveFrom   DateTime  @default(now()) @map("effective_from")
+  effectiveTo     DateTime? @map("effective_to")
+  approvedBy      String    @map("approved_by") @db.VarChar(255)
+  description     String    @db.Text
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@index([parameterKey])
+  @@index([stage])
+  @@map("statutory_policies")
+}
+
+// 23. EVC Inspections (Live schedule & allocation dispatch)
+model EvcInspection {
+  id                   String    @id @default(uuid()) @db.Uuid
+  applicationId        String    @map("application_id") @db.Uuid
+  applicationRef       String    @map("application_ref") @db.VarChar(100)
+  institutionName      String    @map("institution_name") @db.VarChar(255)
+  regionId             String?   @map("region_id") @db.Uuid
+  regionalDesk         String?   @map("regional_desk") @db.VarChar(100)
+  status               String    @default("EVC_SCHEDULED") @db.VarChar(50) // EVC_SCHEDULED, EVC_IN_PROGRESS, EVC_COMPLETED, PENDING_ALLOCATION
+  inspectionDate       DateTime? @map("inspection_date")
+  panelChair           String?   @map("panel_chair") @db.VarChar(255)
+  panelMember2         String?   @map("panel_member2") @db.VarChar(255)
+  conflictFreeVerified Boolean   @default(true) @map("conflict_free_verified")
+  rationale            String?   @db.Text
+  officerName          String?   @map("officer_name") @db.VarChar(255)
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId])
+  @@index([status])
+  @@map("evc_inspections")
+}
+
+// 24. Deficiency Records (8-point statutory defect record schema)
+model DeficiencyRecord {
+  id                     String    @id @default(uuid()) @db.Uuid
+  deficiencyId           String    @unique @map("deficiency_id") @db.VarChar(100)
+  applicationId          String    @map("application_id") @db.Uuid
+  applicationRef         String    @map("application_ref") @db.VarChar(100)
+  description            String    @db.Text
+  dateIdentified         DateTime  @default(now()) @map("date_identified")
+  responsibleInstitution String    @map("responsible_institution") @db.VarChar(255)
+  responseDeadline       DateTime  @map("response_deadline")
+  deadlineDays           Int       @default(15) @map("deadline_days")
+  requiredEvidence       String?   @map("required_evidence") @db.Text
+  verificationStatus     String    @default("PENDING_SUBMISSION") @map("verification_status") @db.VarChar(50)
+  closureDate            DateTime? @map("closure_date")
+  aphClause              String?   @map("aph_clause") @db.VarChar(255)
+  officerRationale       String?   @map("officer_rationale") @db.Text
+  officerName            String?   @map("officer_name") @db.VarChar(255)
+  historyTrail           Json      @default("[]") @map("history_trail") @db.JsonB
+  createdAt              DateTime  @default(now()) @map("created_at")
+  updatedAt              DateTime  @updatedAt @map("updated_at")
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId])
+  @@index([verificationStatus])
+  @@index([responseDeadline])
+  @@map("deficiency_records")
+}
+
+// 25. Committee Benches (Scrutiny, EVC, SAC/SHC benches)
+model CommitteeBench {
+  id            String   @id @default(uuid()) @db.Uuid
+  code          String   @unique @db.VarChar(100)
+  name          String   @db.VarChar(255)
+  committeeType String   @map("committee_type") @db.VarChar(50) // SCRUTINY, RE_SCRUTINY, EVC, SHC, SAC
+  regionId      String?  @map("region_id") @db.Uuid
+  leadMember    String   @map("lead_member") @db.VarChar(255)
+  members       Json     @default("[]") @db.JsonB
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@index([committeeType])
+  @@index([regionId])
+  @@map("committee_benches")
 }

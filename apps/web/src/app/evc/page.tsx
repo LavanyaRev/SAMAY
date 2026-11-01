@@ -185,8 +185,9 @@ export default function EvcWorkspacePage() {
             </h1>
             <p className="mt-0.5 text-xs text-text-muted">
               Stricter configurable timelines for New Institutions (5d
-              scheduling / 12d completion — TODO(APH-VERIFY)), Conflict-of-Interest
-              disqualification, and Phase 6 escalation alerts.
+              scheduling / 12d completion — TODO(APH-VERIFY)),
+              Conflict-of-Interest disqualification, and Phase 6 escalation
+              alerts.
             </p>
           </div>
 
@@ -397,7 +398,8 @@ export default function EvcWorkspacePage() {
                         )}
                         <div className="mt-2 flex items-center justify-between border-t border-border pt-1.5 text-[10px]">
                           <span className="font-mono text-text-muted">
-                            {item.scheduledDate || `Due: ${item.schedulingDueAt}`}
+                            {item.scheduledDate ||
+                              `Due: ${item.schedulingDueAt}`}
                           </span>
                           <button
                             type="button"
@@ -444,8 +446,7 @@ export default function EvcWorkspacePage() {
               ))}
               {MAY_2026_DAYS.map(({ dayNum, iso }) => {
                 const visitsOnDay = store.cases.filter(
-                  (c) =>
-                    c.scheduledDate === iso || c.schedulingDueAt === iso,
+                  (c) => c.scheduledDate === iso || c.schedulingDueAt === iso,
                 );
                 return (
                   <div
@@ -554,7 +555,8 @@ export default function EvcWorkspacePage() {
 
                 <div className="space-y-2 rounded-xs border border-border bg-surface p-3 text-xs">
                   <div className="font-serif font-bold text-text-primary">
-                    Visit Completion & Report Upload (Auto-Advances Committee Stage)
+                    Visit Completion & Report Upload (Auto-Advances Committee
+                    Stage)
                   </div>
                   <p className="text-[11px] text-text-muted">
                     {STATUTORY_EVC_COMMITTEE_NOTICE_EN}. Uploading the visit
@@ -638,9 +640,13 @@ export default function EvcWorkspacePage() {
             aria-modal="true"
             aria-label="EVC Panel Proposal & Conflict-of-Interest Drawer"
             data-testid="evc-scheduling-drawer"
-            className="fixed inset-0 z-50 flex justify-end bg-black/40"
+            className="fixed inset-0 z-50 flex justify-end bg-black/65"
+            style={{ backgroundColor: "rgba(0, 0, 0, 0.65)" }}
           >
-            <div className="flex h-full w-full max-w-2xl flex-col overflow-y-auto border-l border-border bg-surface-raised p-5 shadow-overlay">
+            <div
+              className="flex h-full w-full max-w-2xl flex-col overflow-y-auto border-l border-border bg-white p-5 shadow-overlay"
+              style={{ backgroundColor: "#ffffff" }}
+            >
               <div className="flex items-start justify-between border-b border-border pb-3">
                 <div>
                   <span className="font-mono text-xs font-bold text-brand">
@@ -650,7 +656,8 @@ export default function EvcWorkspacePage() {
                     EVC Panel Proposal & Conflict-of-Interest Screening
                   </h2>
                   <p className="text-xs text-text-muted">
-                    {selectedCase.institutionName} ({selectedCase.trustOrSociety})
+                    {selectedCase.institutionName} (
+                    {selectedCase.trustOrSociety})
                   </p>
                 </div>
                 <button

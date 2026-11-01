@@ -7,6 +7,7 @@
  */
 
 import { syncDemoClockBannerInStore } from "./notifications-client";
+import { addDaysToIsoString } from "./clock";
 
 export interface HeroLiveAlertItem {
   id: string;
@@ -175,8 +176,16 @@ export interface InstitutionComplianceProfileData {
   institutionId: string;
   institutionName: string;
   region: string;
-  overdueUndertakings: Array<{ ref: string; title: string; daysOverdue: number }>;
-  expiredDocuments: Array<{ ref: string; docType: string; daysExpired: number }>;
+  overdueUndertakings: Array<{
+    ref: string;
+    title: string;
+    daysOverdue: number;
+  }>;
+  expiredDocuments: Array<{
+    ref: string;
+    docType: string;
+    daysExpired: number;
+  }>;
   expiringSoonDocuments: Array<{
     ref: string;
     docType: string;
@@ -222,7 +231,8 @@ const CLEAN_TAMPER_ROWS: TamperDemoAuditRow[] = [
     action: "APPLICATION_SUBMITTED",
     actorId: "inst-walchand-001",
     actorRole: "INSTITUTION",
-    rationale: "Initial application dossier submitted with 7 mandatory annexures",
+    rationale:
+      "Initial application dossier submitted with 7 mandatory annexures",
     timestamp: "2026-04-10T09:00:00.000Z",
     prevHash: "GENESIS",
     hash: "8f3c91a4d2b7e6051c4829a0f1e3b5d7c9a2e4f60183a5c7d9e1f3a5b7c9d1e3",
@@ -239,7 +249,8 @@ const CLEAN_TAMPER_ROWS: TamperDemoAuditRow[] = [
     rationale:
       "All faculty norms and lab area requirements verified by Scrutiny Committee",
     timestamp: "2026-04-18T11:30:00.000Z",
-    prevHash: "8f3c91a4d2b7e6051c4829a0f1e3b5d7c9a2e4f60183a5c7d9e1f3a5b7c9d1e3",
+    prevHash:
+      "8f3c91a4d2b7e6051c4829a0f1e3b5d7c9a2e4f60183a5c7d9e1f3a5b7c9d1e3",
     hash: "4b7e20c1a9f8d3e65210c4a8b9d2e7f1c3a5b8d0e2f4a6c8e0b2d4f6a8c0e2f4",
     expectedHash:
       "4b7e20c1a9f8d3e65210c4a8b9d2e7f1c3a5b8d0e2f4a6c8e0b2d4f6a8c0e2f4",
@@ -253,7 +264,8 @@ const CLEAN_TAMPER_ROWS: TamperDemoAuditRow[] = [
     actorRole: "COMMITTEE_MEMBER",
     rationale: "Expert Visit Committee physical verification completed",
     timestamp: "2026-04-26T16:15:00.000Z",
-    prevHash: "4b7e20c1a9f8d3e65210c4a8b9d2e7f1c3a5b8d0e2f4a6c8e0b2d4f6a8c0e2f4",
+    prevHash:
+      "4b7e20c1a9f8d3e65210c4a8b9d2e7f1c3a5b8d0e2f4a6c8e0b2d4f6a8c0e2f4",
     hash: "9d1e3f5a7b9c1d3e5f7a9b1c3d5e7f9a1b3c5d7e9f1a3b5c7d9e1f3a5b7c9d1f",
     expectedHash:
       "9d1e3f5a7b9c1d3e5f7a9b1c3d5e7f9a1b3c5d7e9f1a3b5c7d9e1f3a5b7c9d1f",
@@ -400,8 +412,7 @@ interface HeroFeaturesStoreState {
 }
 
 function addDaysToIso(baseIso: string, days: number): string {
-  const ms = Date.parse(baseIso) + days * 24 * 60 * 60 * 1000;
-  return new Date(ms).toISOString();
+  return addDaysToIsoString(baseIso, days);
 }
 
 const INITIAL_BASE_ISO = "2026-05-01T09:00:00.000Z";
@@ -708,7 +719,8 @@ export function calculateComplianceHealthScore(
       reason: `Overdue by ${und.daysOverdue} working days past statutory due_date.`,
       pointsDeducted: weights.overdueUndertakingPenalty,
       weightApplied: weights.overdueUndertakingPenalty,
-      aphClause: "APH 2024-27 Conditional Approval Undertakings - TODO(APH-VERIFY)",
+      aphClause:
+        "APH 2024-27 Conditional Approval Undertakings - TODO(APH-VERIFY)",
     });
   }
 
@@ -990,4 +1002,3 @@ export function publishDraftVersionInStore(input: {
   emitHeroChange();
   return created;
 }
-

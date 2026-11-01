@@ -23,6 +23,7 @@ export interface SeededUser {
 
 export interface SeededApplication {
   id: string;
+  applicationRef?: string;
   institutionId: string;
   regionId: string;
   applicationTypeId: string;
@@ -30,6 +31,8 @@ export interface SeededApplication {
   stage: string;
   status: string;
   pipelineDefinitionId: string;
+  ballWith?: string;
+  currentQueue?: string;
   version: number;
   deletedAt: Date | null;
   institution: {
@@ -179,7 +182,86 @@ export const SEEDED_USERS: SeededUser[] = [
 
 export const SEEDED_APPLICATIONS: SeededApplication[] = [
   {
+    id: "sc-01",
+    applicationRef: "EOA-2027-1042",
+    institutionId: "33333333-3333-4333-8333-333333333301",
+    regionId: SEEDED_REGIONS.WRO.id,
+    applicationTypeId: "55555555-5555-4555-8555-555555555501",
+    academicYear: "2026-27",
+    stage: "SCRUTINY",
+    status: "UNDER_SCRUTINY",
+    pipelineDefinitionId: "66666666-6666-4666-8666-666666666601",
+    ballWith: "REGIONAL_OFFICE",
+    version: 1,
+    deletedAt: null,
+    institution: {
+      id: "33333333-3333-4333-8333-333333333301",
+      name: "Sahyadri Institute of Technology",
+      aictePermanentId: "1-4000000001",
+      state: "Maharashtra",
+      district: "Pune",
+    },
+    region: {
+      id: SEEDED_REGIONS.WRO.id,
+      code: "WRO",
+      name: "Western Region",
+    },
+  },
+  {
+    id: "sc-02",
+    applicationRef: "EOA-2027-1086",
+    institutionId: "33333333-3333-4333-8333-333333333302",
+    regionId: SEEDED_REGIONS.WRO.id,
+    applicationTypeId: "55555555-5555-4555-8555-555555555501",
+    academicYear: "2026-27",
+    stage: "SCRUTINY",
+    status: "UNDER_SCRUTINY",
+    pipelineDefinitionId: "66666666-6666-4666-8666-666666666601",
+    ballWith: "REGIONAL_OFFICE",
+    version: 1,
+    deletedAt: null,
+    institution: {
+      id: "33333333-3333-4333-8333-333333333302",
+      name: "Konkan Technical College",
+      aictePermanentId: "1-4000000002",
+      state: "Maharashtra",
+      district: "Ratnagiri",
+    },
+    region: {
+      id: SEEDED_REGIONS.WRO.id,
+      code: "WRO",
+      name: "Western Region",
+    },
+  },
+  {
+    id: "sc-03",
+    applicationRef: "LOA-2027-1128",
+    institutionId: "33333333-3333-4333-8333-333333333303",
+    regionId: SEEDED_REGIONS.WRO.id,
+    applicationTypeId: "55555555-5555-4555-8555-555555555502",
+    academicYear: "2026-27",
+    stage: "SCRUTINY",
+    status: "SCRUTINY_DEFICIENT",
+    pipelineDefinitionId: "66666666-6666-4666-8666-666666666601",
+    ballWith: "INSTITUTION",
+    version: 1,
+    deletedAt: null,
+    institution: {
+      id: "33333333-3333-4333-8333-333333333303",
+      name: "Narmada Polytechnic",
+      aictePermanentId: "1-4000000003",
+      state: "Gujarat",
+      district: "Bharuch",
+    },
+    region: {
+      id: SEEDED_REGIONS.WRO.id,
+      code: "WRO",
+      name: "Western Region",
+    },
+  },
+  {
     id: "44444444-4444-4444-8444-444444444401",
+    applicationRef: "EOA-2027-1001",
     institutionId: "33333333-3333-4333-8333-333333333301",
     regionId: SEEDED_REGIONS.WRO.id,
     applicationTypeId: "55555555-5555-4555-8555-555555555501",

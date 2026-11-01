@@ -3,36 +3,43 @@
 @tailwind utilities;
 
 /* ============================================================================
- * SAMAY Regulatory Design System Tokens ("Feeling Festive" Statutory Palette)
+ * SAMAY Regulatory Design System Tokens (Sunflower & Cream Edition)
  * Single source of truth for Light & Dark themes, WCAG 2.1 AA contrast-verified.
  * ============================================================================ */
 
 :root,
 [data-theme="light"] {
-  /* Surfaces & Hairline Borders */
-  --surface: #F7F1EB;
-  --surface-raised: #FDFAF6;
-  --surface-sunken: #EFE3D8;
-  --border: #DCCAB9;
+  /* Surfaces & Hairline Borders (Sunflower & Cream) */
+  --surface: #FAFAFA;          /* Clean, breathable off-white canvas */
+  --surface-raised: #FFFFFF;   /* Pure white cards & containers */
+  --surface-sunken: #F5F3F0;   /* Warm neutral inset / code blocks */
+  --border: #E5E0D8;           /* Crisp 1px neutral/cocoa border */
 
   /* Typography Colours */
-  --text-primary: #131005;
-  --text-muted: #5E5644;
+  --text-primary: #642D0A;     /* Deep Cocoa for warm, legible typography */
+  --text-muted: #7B6152;       /* Warm muted cocoa for secondary copy */
 
-  /* Brand & Emphasis */
-  --brand: #4F4315;
-  --brand-hover: #3D3410;
-  --on-brand: #F7F1EB;
-  --highlight: #804B05;
-  --accent: #581301; /* Reserved strictly for AuditSeal & rare statutory emphasis */
+  /* Brand Accents */
+  --brand: #EC642A;            /* Rich Orange for primary action buttons & active tabs */
+  --brand-hover: #D8531B;
+  --on-brand: #FFFFFF;
+  --highlight: #FAAA21;        /* Sunny Yellow for warnings & status highlights */
+  --accent: #EC642A;           /* Statutory brand accent */
 
-  /* SLA Semantic Colours (WCAG 2.1 AA verified >= 4.5:1 on all 3 surfaces) */
-  --sla-on-track: #2F6B4F;
-  --sla-due-soon: #8A5C04; /* Adjusted from #C98A0B (2.63:1) -> #8A5C04 (5.19:1 on surface, 4.61:1 on sunken) */
-  --sla-due-soon-raw: #C98A0B;
+  /* SLA Semantic Colours (WCAG 2.1 AA verified >= 4.5:1 on light surfaces) */
+  --sla-on-track: #1B7340;
+  --sla-due-soon: #8A5C04;
+  --sla-due-soon-raw: #FAAA21;
   --sla-overdue: #B3261E;
-  --sla-paused: #536270;   /* Adjusted from #5B6B7A (4.35:1 on sunken) -> #536270 (4.97:1 on sunken) */
-  --info: #2F5D7C;
+  --sla-paused: #52606D;
+  --info: #1D5D8A;
+
+  /* Typography Font Families */
+  --font-serif: "Plus Jakarta Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-sans: "Plus Jakarta Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "IBM Plex Mono", SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-serif-hi: "Noto Sans Devanagari", "Plus Jakarta Sans", sans-serif;
+  --font-sans-hi: "Noto Sans Devanagari", "Plus Jakarta Sans", sans-serif;
 
   /* Type Scale */
   --font-size-xs: 0.75rem;     /* 12px */
@@ -51,45 +58,45 @@
   --spacing-6: 1.5rem;
   --spacing-8: 2rem;
   --spacing-sidebar: 16.5rem;  /* 264px */
-  --spacing-topbar: 3.5rem;    /* 56px */
+  --spacing-topbar: 4rem;      /* 64px - spacious global sticky header */
 
-  /* Radius (Hard cap at 6px per anti-generic mandate) */
+  /* Radius (Hard cap at 6px per statutory mandate) */
   --radius-xs: 2px;
   --radius-sm: 4px;
   --radius-md: 6px;
 
-  /* Minimal Shadows (1px hairline borders are primary) */
+  /* Minimal Shadows (Crisp 1px borders are primary, zero heavy drop shadows) */
   --shadow-none: none;
-  --shadow-subtle: 0 1px 2px 0 rgba(19, 16, 5, 0.05);
-  --shadow-overlay: 0 8px 20px -4px rgba(19, 16, 5, 0.16);
+  --shadow-subtle: 0 1px 2px 0 rgba(100, 45, 10, 0.04);
+  --shadow-overlay: 0 8px 24px -4px rgba(100, 45, 10, 0.12);
 }
 
 .dark,
 [data-theme="dark"] {
   /* Surfaces & Hairline Borders */
-  --surface: #17140A;
-  --surface-raised: #211C0E;
-  --surface-sunken: #100D06;
-  --border: #3A3320;
+  --surface: #1C1917;
+  --surface-raised: #292524;
+  --surface-sunken: #141210;
+  --border: #44403C;
 
   /* Typography Colours */
-  --text-primary: #F7F1EB;
-  --text-muted: #B9AE98;
+  --text-primary: #F5F5F4;
+  --text-muted: #D6D3D1;
 
   /* Brand & Emphasis */
-  --brand: #BDA94F;
-  --brand-hover: #CDBB6C;
-  --on-brand: #131005;
-  --highlight: #D08A3A;
-  --accent: #E0866B; /* Reserved strictly for AuditSeal & rare statutory emphasis */
+  --brand: #EC642A;
+  --brand-hover: #F97316;
+  --on-brand: #FFFFFF;
+  --highlight: #FAAA21;
+  --accent: #F97316;
 
-  /* SLA Semantic Colours (WCAG 2.1 AA verified >= 4.5:1 on all 3 dark surfaces) */
-  --sla-on-track: #5FB38A;
-  --sla-due-soon: #E5AE3A;
-  --sla-due-soon-raw: #E5AE3A;
-  --sla-overdue: #F0766E;
-  --sla-paused: #9AA9B8;
-  --info: #7FB0D3;
+  /* SLA Semantic Colours (WCAG 2.1 AA verified >= 4.5:1 on dark surfaces) */
+  --sla-on-track: #4ADE80;
+  --sla-due-soon: #FBBF24;
+  --sla-due-soon-raw: #FAAA21;
+  --sla-overdue: #F87171;
+  --sla-paused: #94A3B8;
+  --info: #38BDF8;
 
   --shadow-subtle: 0 1px 2px 0 rgba(0, 0, 0, 0.35);
   --shadow-overlay: 0 10px 24px -4px rgba(0, 0, 0, 0.65);
@@ -100,77 +107,26 @@
     border-color: var(--border);
   }
 
-  html,
   body {
     background-color: var(--surface);
     color: var(--text-primary);
-    font-family: var(--font-sans), var(--font-sans-hi), sans-serif;
-    font-size: var(--font-size-base);
-    line-height: 1.5;
-    -webkit-font-smoothing: antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 
-  /* Ensure Hindi (Devanagari) matras never clip in dense headers, chips or sidebar items */
-  [lang="hi"],
-  .lang-hi {
-    line-height: 1.65;
-  }
-
-  /* High-visibility WCAG 2.1 AA keyboard focus ring */
+  /* Focus ring style in Rich Orange */
   :focus-visible {
-    outline: 2px solid var(--brand);
-    outline-offset: 2px;
+    outline: 2px solid #EC642A;
+    outline-offset: 1px;
   }
 }
 
-/* Signature Motifs */
-@layer components {
-  /* 1. File-Tab Notched Corner StatusChip */
-  .motif-file-tab {
-    position: relative;
-    clip-path: polygon(0 0, calc(100% - 7px) 0, 100% 7px, 100% 100%, 0 100%);
-  }
-
-  .motif-file-tab::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 7px;
-    height: 7px;
-    border-left: 1px solid currentColor;
-    border-bottom: 1px solid currentColor;
-    opacity: 0.45;
-    pointer-events: none;
-  }
-
-  /* 2. Ruled Vertical Timeline Rail with Calibration Ticks */
-  .motif-timeline-rail {
-    position: relative;
-    border-left: 2px solid var(--border);
-    background-image: repeating-linear-gradient(
-      to bottom,
-      transparent 0px,
-      transparent 11px,
-      var(--border) 11px,
-      var(--border) 12px
-    );
-    background-size: 5px 12px;
-    background-repeat: repeat-y;
-    background-position: left top;
-  }
-
-  /* 3. Official Double-Ruled Audit Seal */
-  .motif-audit-seal {
-    border: 1px solid var(--accent);
-    outline: 1px solid var(--accent);
-    outline-offset: -3px;
-  }
-
-  /* Tabular numerals for IDs, SLA counters, dates, and financial/intake figures */
-  .tabular-nums-data {
-    font-family: var(--font-mono), monospace;
-    font-variant-numeric: tabular-nums;
-  }
+/* Regulatory Tabular Numbers Utility */
+.tabular-nums-data {
+  font-variant-numeric: tabular-nums lining-nums;
+  letter-spacing: -0.01em;
 }
 
+/* Subtle watermark styling for official statutory portals */
+.watermark-emblem {
+  background-image: radial-gradient(circle at center, rgba(236, 100, 42, 0.03) 0%, transparent 70%);
+}

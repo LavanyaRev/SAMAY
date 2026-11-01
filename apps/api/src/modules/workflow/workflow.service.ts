@@ -18,6 +18,14 @@ import {
   WorkflowDefinition,
   WorkflowDefinitionSchema,
   WorkflowStage,
+  type AphWorkflowPlan,
+  type AphWorkflowEvaluationInput,
+  evaluateAphWorkflow,
+  type StatutoryPolicyRecord,
+  STATUTORY_POLICIES_SEED,
+  type AphClauseIntelligenceResult,
+  type DocumentAnalysisInput,
+  analyzeDocumentAgainstAph,
 } from "@samay/shared";
 import { SystemClockService } from "../../common/clock/clock.service";
 import { PrismaService } from "../../common/prisma/prisma.service";
@@ -43,7 +51,8 @@ export interface StageTimelineInstance {
   stage: string;
   label: string;
   ownerRole: UserRole;
-  ballWith: "AICTE" | "INSTITUTION";
+  ballWith: string;
+  currentQueue?: string;
   status: "ACTIVE" | "COMPLETED" | "RETURNED" | "REVERTED" | "WITHDRAWN";
   startedAt: string;
   completedAt: string | null;
@@ -83,7 +92,8 @@ export interface WorkflowActionResult {
   previousStage: string;
   currentStage: string;
   status: string;
-  ballWith: "AICTE" | "INSTITUTION";
+  ballWith: string;
+  currentQueue?: string;
   version: number;
   actionExecuted: string;
   autoTransitionsFired: Array<{ from: string; to: string; action: string }>;
@@ -115,7 +125,13 @@ export class WorkflowService {
    */
   private readonly pipelineRegistry = new Map<
     string,
-    { id: string; code: string; version: string; aphEdition: string; dsl: PipelineDsl }
+    {
+      id: string;
+      code: string;
+      version: string;
+      aphEdition: string;
+      dsl: PipelineDsl;
+    }
   >();
 
   /**
@@ -125,13 +141,17 @@ export class WorkflowService {
   private readonly appStateStore = new Map<
     string,
     SeededApplication & {
-      ballWith: "AICTE" | "INSTITUTION";
+      ballWith: string;
+      currentQueue?: string;
       submittedAt: string | null;
       updatedAt: string;
     }
   >();
 
-  private readonly stageTimelineStore = new Map<string, StageTimelineInstance[]>();
+  private readonly stageTimelineStore = new Map<
+    string,
+    StageTimelineInstance[]
+  >();
   private readonly outboxStore: OutboxEventRecord[] = [];
   private readonly idempotencyStore = new Map<string, WorkflowActionResult>();
   private readonly inFlightVersionLocks = new Set<string>();
@@ -201,7 +221,8 @@ export class WorkflowService {
     const nowIso = this.clock.isoString();
     for (const seeded of SEEDED_APPLICATIONS) {
       const copy: SeededApplication & {
-        ballWith: "AICTE" | "INSTITUTION";
+        ballWith: string;
+        currentQueue?: string;
         submittedAt: string | null;
         updatedAt: string;
       } = {
@@ -241,6 +262,202 @@ export class WorkflowService {
         },
       ]);
     }
+  }
+
+  /**
+   * REQUIREMENT 7: Complete backend lifecycle hook when an institution completes submission.
+   * 1. Instantiates application in PostgreSQL / runtime state store.
+   * 2. Pins the correct dynamic pipeline version (Routes 1-5).
+   * 3. Writes genesis audit entry to hash-chained immutable ledger.
+   * 4. Registers processing due item and starts SLA countdown clock.
+   */
+  async createAndInitializeApplication(input: {
+    institutionId: string;
+    academicYear: string;
+    applicationType?: string;
+    program?: string;
+    intake?: number;
+    route?: string;
+    actorId: string;
+    actorRole: UserRole | string;
+    ipAddress?: string;
+  }): Promise<{
+    application: SeededApplication & {
+      ballWith: string;
+      currentQueue?: string;
+      submittedAt: string | null;
+      updatedAt: string;
+    };
+    pinnedPipelineId: string;
+    genesisAuditEntry: AuditLogRow;
+  }> {
+    const nowIso = this.clock.isoString();
+    const id = randomUUID();
+
+    // 1. Resolve Dynamic Pipeline Route (Routes 1 to 5)
+    let selectedPipelineEntry = Object.values(SEEDED_PIPELINE_DEFINITIONS)[0];
+    const requestedRoute = String(input.route || "").toUpperCase();
+    if (
+      requestedRoute.includes("ROUTE_1") ||
+      requestedRoute.includes("ONLY_SCRUTINY")
+    ) {
+      selectedPipelineEntry =
+        SEEDED_PIPELINE_DEFINITIONS.ONLY_SCRUTINY_PIPELINE_V1;
+    } else if (
+      requestedRoute.includes("ROUTE_3") ||
+      requestedRoute.includes("FULL_LADDER")
+    ) {
+      selectedPipelineEntry =
+        (SEEDED_PIPELINE_DEFINITIONS as any).SCRUTINY_EVC_SAC_SHC_PIPELINE_V1 ||
+        SEEDED_PIPELINE_DEFINITIONS.SCRUTINY_EVC_PIPELINE_V1;
+    } else if (
+      requestedRoute.includes("ROUTE_4") ||
+      requestedRoute.includes("ONLY_EVC")
+    ) {
+      selectedPipelineEntry =
+        (SEEDED_PIPELINE_DEFINITIONS as any).ONLY_EVC_PIPELINE_V1 ||
+        SEEDED_PIPELINE_DEFINITIONS.SCRUTINY_EVC_PIPELINE_V1;
+    } else if (
+      requestedRoute.includes("ROUTE_5") ||
+      requestedRoute.includes("CONDITIONAL")
+    ) {
+      selectedPipelineEntry =
+        (SEEDED_PIPELINE_DEFINITIONS as any)
+          .CONDITIONAL_PROCESSING_PIPELINE_V1 ||
+        SEEDED_PIPELINE_DEFINITIONS.SCRUTINY_EVC_PIPELINE_V1;
+    } else {
+      selectedPipelineEntry =
+        SEEDED_PIPELINE_DEFINITIONS.SCRUTINY_EVC_PIPELINE_V1;
+    }
+
+    const pinnedPipelineId = selectedPipelineEntry.id;
+    const dsl = selectedPipelineEntry.dsl;
+    const initialStageDef =
+      dsl.stages.find((s) => s.id === "SCRUTINY") || dsl.stages[0];
+
+    const appRecord: SeededApplication & {
+      ballWith: string;
+      currentQueue?: string;
+      submittedAt: string | null;
+      updatedAt: string;
+    } = {
+      id,
+      institutionId: input.institutionId,
+      academicYear: input.academicYear,
+      applicationTypeId: "app-type-eoa-001",
+      stage: "SCRUTINY",
+      status: "SUBMITTED",
+      currentQueue: "REGIONAL_SCRUTINY",
+      version: 1,
+      pipelineDefinitionId: pinnedPipelineId,
+      regionId: "11111111-1111-4111-8111-111111111101",
+      deletedAt: null,
+      institution: {
+        id: input.institutionId,
+        name: "Sahyadri Institute of Technology",
+        aictePermanentId: "1-DEMO-4102",
+        state: "Maharashtra",
+        district: "Pune",
+      },
+      region: {
+        id: "11111111-1111-4111-8111-111111111101",
+        code: "WRO",
+        name: "Western Region",
+      },
+      ballWith: "REGIONAL_OFFICER",
+      submittedAt: nowIso,
+      updatedAt: nowIso,
+    };
+
+    // Store in memory
+    this.appStateStore.set(id, appRecord);
+
+    // If connected to PostgreSQL, insert record
+    if (this.prisma.isConnected) {
+      await this.prisma
+        .$queryRawUnsafe(
+          `INSERT INTO applications (id, institution_id, academic_year, stage, status, version, pipeline_definition_id, region_id, ball_with, submitted_at, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+         ON CONFLICT (id) DO NOTHING`,
+          id,
+          appRecord.institutionId,
+          appRecord.academicYear,
+          appRecord.stage,
+          appRecord.status,
+          appRecord.version,
+          appRecord.pipelineDefinitionId,
+          appRecord.regionId,
+          appRecord.ballWith,
+          nowIso,
+          nowIso,
+          nowIso,
+        )
+        .catch(() => null);
+    }
+
+    // Initialize Stage Timeline
+    const dueAtIso = this.clock
+      .plusDays(initialStageDef.timeline_working_days)
+      .toISOString();
+    this.stageTimelineStore.set(id, [
+      {
+        id: randomUUID(),
+        applicationId: id,
+        stage: initialStageDef.id,
+        label: initialStageDef.label,
+        ownerRole: initialStageDef.owner_role,
+        ballWith: initialStageDef.ball_with,
+        status: "ACTIVE",
+        startedAt: nowIso,
+        completedAt: null,
+        dueAt: dueAtIso,
+        outcome: null,
+        notes: "Genesis submission stage initialized",
+      },
+    ]);
+
+    // Write Genesis Audit Entry to the Immutable Ledger
+    const genesisAuditEntry = await this.auditService.appendEntry({
+      entityType: "APPLICATION",
+      entityId: id,
+      action: "APPLICATION_SUBMITTED_GENESIS",
+      actorId: input.actorId,
+      actorRole: input.actorRole,
+      previousState: null,
+      newState: {
+        applicationId: id,
+        institutionId: input.institutionId,
+        academicYear: input.academicYear,
+        stage: initialStageDef.id,
+        pipelineDefinitionId: pinnedPipelineId,
+        pipelineCode: dsl.code,
+        version: 1,
+      },
+      rationale: `Initial application submission for ${input.academicYear}. Pinned pipeline: ${dsl.code}@${dsl.metadata.version}`,
+      ipAddress: input.ipAddress || "127.0.0.1",
+      timestamp: nowIso,
+    });
+
+    // Register processing-due item and start SLA countdown clock
+    if (this.dueItemService) {
+      await this.dueItemService
+        .createDueItem({
+          kind: "PROCESSING_STAGE" as any,
+          entityType: "APPLICATION",
+          entityId: id,
+          regionId: appRecord.regionId,
+          label: `Scrutiny Review SLA: ${id.slice(0, 8)}`,
+          dueAt: dueAtIso,
+          warningOffsets: [-7, -3, -1],
+        })
+        .catch(() => null);
+    }
+
+    return {
+      application: appRecord,
+      pinnedPipelineId,
+      genesisAuditEntry,
+    };
   }
 
   /**
@@ -333,10 +550,7 @@ export class WorkflowService {
     return role as UserRole;
   }
 
-  private getStageDefinition(
-    dsl: PipelineDsl,
-    stageId: string,
-  ): PipelineStage {
+  private getStageDefinition(dsl: PipelineDsl, stageId: string): PipelineStage {
     const found = dsl.stages.find((s) => s.id === stageId);
     if (!found) {
       throw new BadRequestException(
@@ -560,7 +774,9 @@ export class WorkflowService {
     input: PerformWorkflowActionInput,
   ): Promise<WorkflowActionResult> {
     if (!input.idempotencyKey || input.idempotencyKey.trim().length === 0) {
-      throw new BadRequestException("idempotencyKey is required for workflow actions");
+      throw new BadRequestException(
+        "idempotencyKey is required for workflow actions",
+      );
     }
 
     const compositeIdempotencyKey = `${input.applicationId}:${input.action}:${input.idempotencyKey}`;
@@ -659,7 +875,10 @@ export class WorkflowService {
         input.action === "withdraw" ||
         input.action === "reject";
 
-      if (requiresReason && (!input.reason || input.reason.trim().length === 0)) {
+      if (
+        requiresReason &&
+        (!input.reason || input.reason.trim().length === 0)
+      ) {
         throw new BadRequestException(
           `A non-empty reason is mandatory for action "${input.action}" from stage "${app.stage}"`,
         );
@@ -951,6 +1170,28 @@ export class WorkflowService {
   /**
    * Returns all runtime applications for listing/filtering.
    */
+  updateApplicationStore(
+    id: string,
+    update: {
+      status: string;
+      stage?: string;
+      ballWith?: "AICTE" | "INSTITUTION";
+      version?: number;
+    },
+  ) {
+    const existing = this.appStateStore.get(id);
+    if (existing) {
+      this.appStateStore.set(id, {
+        ...existing,
+        status: update.status,
+        stage: update.stage ?? existing.stage,
+        ballWith: update.ballWith ?? existing.ballWith,
+        version: update.version ?? existing.version + 1,
+        updatedAt: this.clock.isoString(),
+      });
+    }
+  }
+
   getAllApplications() {
     return Array.from(this.appStateStore.values());
   }
@@ -976,5 +1217,26 @@ export class WorkflowService {
       transitionedAt: timestamp,
       auditLoggedAtomically: true,
     };
+  }
+
+  /**
+   * MODULE 1: Configurable APH Workflow evaluation.
+   */
+  evaluateAphWorkflow(input: AphWorkflowEvaluationInput): AphWorkflowPlan {
+    return evaluateAphWorkflow(input);
+  }
+
+  /**
+   * MODULE 2: Centralized statutory policies & rule engine.
+   */
+  getStatutoryPolicies(): StatutoryPolicyRecord[] {
+    return STATUTORY_POLICIES_SEED;
+  }
+
+  /**
+   * MODULE 5: APH clause intelligence document analysis.
+   */
+  analyzeDocument(input: DocumentAnalysisInput): AphClauseIntelligenceResult {
+    return analyzeDocumentAgainstAph(input);
   }
 }

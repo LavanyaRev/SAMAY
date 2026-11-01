@@ -153,11 +153,13 @@ export function CommandPalette() {
       role="dialog"
       aria-modal="true"
       aria-label="Statutory Command Palette"
-      className="fixed inset-0 z-50 flex items-start justify-center bg-text-primary/45 pt-20 p-4"
+      className="fixed inset-0 z-50 flex items-start justify-center bg-black/65 pt-20 p-4"
+      style={{ backgroundColor: "rgba(0, 0, 0, 0.65)" }}
       onClick={() => setCommandPaletteOpen(false)}
     >
       <div
-        className="w-full max-w-xl rounded-sm border border-border bg-surface-raised shadow-overlay"
+        className="w-full max-w-xl rounded-xl border border-[#E5E0D8] bg-white shadow-2xl overflow-hidden"
+        style={{ backgroundColor: "#ffffff" }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-2.5 border-b border-border bg-surface-sunken px-3.5 py-2.5">
